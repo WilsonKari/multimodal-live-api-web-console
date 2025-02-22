@@ -146,6 +146,8 @@ body {
     overflow: hidden;
   }
 
+  overflow: hidden; /* Prevenir scroll en el contenedor principal */
+
   .main-app-area {
     display: flex;
     flex: 1;

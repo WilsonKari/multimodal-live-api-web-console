@@ -53,6 +53,8 @@ interface MultimodalLiveClientEventTypes {
   turncomplete: () => void;
   toolcall: (toolCall: ToolCall) => void;
   toolcallcancellation: (toolcallCancellation: ToolCallCancellation) => void;
+  assistantSpeakingStarted: () => void;
+  assistantSpeakingEnded: () => void;
 }
 
 export type MultimodalLiveAPIClientConnection = {
@@ -89,6 +91,11 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
       type,
       message,
     };
+    if (type === "server.audio") {
+      this.emit("assistantSpeakingStarted");
+    } else if (type === "server.send" && message === "turnComplete") {
+      this.emit("assistantSpeakingEnded");
+    }
     this.emit("log", log);
   }
 
