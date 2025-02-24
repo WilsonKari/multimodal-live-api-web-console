@@ -10,10 +10,15 @@ const EventConfigList: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
-  const handleToggle = (eventType: string) => {
-    const config = eventConfigs.find(config => config.eventType === eventType);
-    if (config) {
-      setEventConfig(eventType, { enabled: !config.enabled });
+  const handleToggle = async (eventType: string) => {
+    try {
+      setIsUpdating(true);
+      const config = eventConfigs.find(config => config.eventType === eventType);
+      if (config) {
+        await setEventConfig(eventType, { enabled: !config.enabled });
+      }
+    } finally {
+      setIsUpdating(false);
     }
   };
 

@@ -30,11 +30,16 @@ const EventCard: React.FC<EventCardProps> = ({
   filterParameters,
   onConfigure,
 }) => {
-  // Función para formatear el nombre del evento para mostrar
   const formatEventName = (name: string) => {
     return name
-      .replace(/([A-Z])/g, ' $1') // Agrega espacios antes de las mayúsculas
-      .replace(/^./, (str) => str.toUpperCase()); // Primera letra mayúscula
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, (str) => str.toUpperCase());
+  };
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onToggle();
   };
 
   return (
@@ -52,8 +57,8 @@ const EventCard: React.FC<EventCardProps> = ({
 
       <div className="card-actions">
         <button 
-          className="toggle"
-          onClick={onToggle}
+          className={`toggle ${enabled ? 'enabled' : 'disabled'}`}
+          onClick={handleToggle}
         >
           {enabled ? 'Desactivar' : 'Activar'}
         </button>

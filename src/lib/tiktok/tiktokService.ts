@@ -40,6 +40,11 @@ export class TikTokService {
         });
 
         this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.CHAT_MESSAGE, (data) => {
+            // Solo emitir si el eventBus indica que el evento está habilitado
+            if (!eventBus.isEventEnabled('tiktokChatMessage')) {
+                return;
+            }
+            
             const chatData = {
                 comment: data?.comment,
                 uniqueId: data?.uniqueId,

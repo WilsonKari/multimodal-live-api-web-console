@@ -67,10 +67,27 @@ export default function SidePanel() {
   // Escuchar mensajes aprobados
   useEffect(() => {
     const handleApprovedMessage = (message: string) => {
+      console.log('[LOG-9] Mensaje a punto de ser procesado:', {
+        message,
+        eventEnabled: eventBus.isEventEnabled('tiktokChatMessage'),
+        connected,
+        timestamp: new Date().toISOString()
+      });
+
+      // Verificar si el evento de chat está habilitado antes de procesar
+      if (!eventBus.isEventEnabled('tiktokChatMessage')) {
+        return;
+      }
+
       if (connected) {
         setTextInput(message);
         
         const timeoutId = setTimeout(() => {
+          // Verificar nuevamente antes de enviar, por si cambió el estado
+          if (!eventBus.isEventEnabled('tiktokChatMessage')) {
+            return;
+          }
+
           if (connected && message.trim()) {
             try {
               client.send([{ text: message }]);

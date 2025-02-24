@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { ChatFilterConfig } from './types/chatConfig';
+import eventBus from './eventBus';
 
 // Configuración por defecto para el chat
 const defaultChatConfig: ChatFilterConfig = {
@@ -41,7 +42,7 @@ function isChatConfig(config: any): config is ChatFilterConfig {
          'donorRange' in config;
 }
 
-export const useEventStore = create<EventStoreState>((set) => ({
+export const useEventStore = create<EventStoreState>((set, get) => ({
   eventConfigs: [
     { 
       eventType: 'tiktokChatMessage', 
@@ -59,21 +60,28 @@ export const useEventStore = create<EventStoreState>((set) => ({
     set((state) => {
       const updatedConfigs = state.eventConfigs.map((eventConfig) => {
         if (eventConfig.eventType === eventType) {
-          // Si es una actualización de filtros para el chat
+          const newConfig = { ...eventConfig, ...config };
+          
+          // Si se está actualizando enabled, emitir evento de cambio
+          if (config.enabled !== undefined && config.enabled !== eventConfig.enabled) {
+            eventBus.emit('eventStateChanged', {
+              eventType,
+              enabled: config.enabled
+            });
+          }
+          
+          // Si son filtros de chat, manejarlos específicamente
           if (config.filterParameters && eventType === 'tiktokChatMessage') {
-            const updatedConfig = {
-              ...eventConfig,
-              ...config,
+            return {
+              ...newConfig,
               filterParameters: {
                 ...eventConfig.filterParameters,
                 ...(isChatConfig(config.filterParameters) ? config.filterParameters : {})
               }
             };
-            return updatedConfig;
           }
           
-          // Para otros tipos de eventos
-          return { ...eventConfig, ...config };
+          return newConfig;
         }
         return eventConfig;
       });
