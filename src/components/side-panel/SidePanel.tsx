@@ -22,6 +22,7 @@ import { useLiveAPIContext } from "../../contexts/LiveAPIContext";
 import { useLoggerStore } from "../../lib/store-logger";
 import Logger, { LoggerFilterType } from "../logger/Logger";
 import "./side-panel.scss";
+import eventBus from "../../lib/events/eventBus";
 
 const filterOptions = [
   { value: "conversations", label: "Conversations" },
@@ -35,6 +36,7 @@ export default function SidePanel() {
   const loggerRef = useRef<HTMLDivElement>(null);
   const loggerLastHeightRef = useRef<number>(-1);
   const { log, logs } = useLoggerStore();
+  const [pendingMessages, setPendingMessages] = useState<string[]>([]);
 
   const [textInput, setTextInput] = useState("");
   const [selectedOption, setSelectedOption] = useState<{
@@ -62,6 +64,35 @@ export default function SidePanel() {
       client.off("log", log);
     };
   }, [client, log]);
+
+  // Escuchar mensajes aprobados
+  useEffect(() => {
+    const handleApprovedMessage = (message: string) => {
+      if (connected) {
+        // Si el asistente está conectado, enviar mensaje directamente
+        client.send([{ text: message }]);
+      } else {
+        // Si no está conectado, agregar a la cola de pendientes
+        setPendingMessages(prev => [...prev, message]);
+      }
+    };
+
+    eventBus.on('approvedChatMessage', handleApprovedMessage);
+    return () => {
+      eventBus.off('approvedChatMessage', handleApprovedMessage);
+    };
+  }, [connected, client]);
+
+  // Procesar mensajes pendientes cuando el asistente se conecta
+  useEffect(() => {
+    if (connected && pendingMessages.length > 0) {
+      console.log('[SidePanel] Procesando mensajes pendientes:', pendingMessages.length);
+      pendingMessages.forEach(message => {
+        client.send([{ text: message }]);
+      });
+      setPendingMessages([]); // Limpiar la cola después de procesar
+    }
+  }, [connected, pendingMessages, client]);
 
   const handleSubmit = () => {
     client.send([{ text: textInput }]);
@@ -126,6 +157,11 @@ export default function SidePanel() {
         />
       </div>
       <div className={cn("input-container", { disabled: !connected })}>
+        {pendingMessages.length > 0 && !connected && (
+          <div className="pending-messages-indicator">
+            {pendingMessages.length} mensajes pendientes
+          </div>
+        )}
         <div className="input-content">
           <textarea
             className="input-area"

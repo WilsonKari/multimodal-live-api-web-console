@@ -111,6 +111,14 @@ function processEvent(eventData: EventType) {
       timestamp: new Date().toISOString(),
       details: eventData
     });
+
+    // Aquí emitimos el evento especial para mensajes de chat aprobados
+    if (eventData.eventType === 'tiktokChatMessage') {
+      const chatEvent = eventData as TiktokChatMessageEvent;
+      const messageForAssistant = `[${chatEvent.nickname}]: ${chatEvent.comment}`;
+      eventBus.emit('approvedChatMessage', messageForAssistant);
+      console.log('[Process] 📨 Mensaje aprobado enviado al asistente:', messageForAssistant);
+    }
   } catch (error) {
     console.error('[Process] 🔴 Error al procesar evento:', error);
   }
