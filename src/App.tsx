@@ -23,8 +23,8 @@ import { Altair } from "./components/altair/Altair";
 import ControlTray from "./components/control-tray/ControlTray";
 import cn from "classnames";
 import { AssistantSpeakingHandler } from "./lib/events/AssistantSpeakingHandler";
-import { tiktokService, TikTokService } from "./lib/tiktok/tiktokService";
-import { spotifyService, SpotifyService } from "./lib/spotify/spotifyService";
+import { EventDisplayHandler } from "./lib/events/EventDisplayHandler";
+import { SpotifyService } from "./lib/spotify/spotifyService";
 import "./lib/events/eventDispatcher"; // Importar para inicializar los listeners
 
 const API_KEY = process.env.REACT_APP_GEMINI_API_KEY as string;
@@ -39,22 +39,19 @@ function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
 
-  // Inicializar el servicio de TikTok
-  //const tiktokServiceInstance = TikTokService.getInstance();
-
-  // Inicializar el servicio de Spotify
+  // Inicializar servicios
   const spotifyServiceInstance = SpotifyService.getInstance();
 
   return (
     <div className="App">
       <AssistantSpeakingHandler />
+      <EventDisplayHandler />
       <LiveAPIProvider url={uri} apiKey={API_KEY}>
         <div className="streaming-console">
           <EventPanel />
           <SidePanel />
           <main>
             <div className="main-app-area">
-              {/* APP goes here */}
               <Altair />
               <video
                 className={cn("stream", {

@@ -37,23 +37,34 @@ function passesFilter<T extends EventType>(
 }
 
 export function eventDispatcher(eventData: any, eventType: string) {
-  console.log(`[LOG 3] eventDispatcher called for ${eventType} with data:`, eventData);
-  const { isAssistantSpeaking } = useEventStore.getState();
-  const { eventConfigs } = useEventStore.getState();
+  console.log('[Dispatch] Procesando evento:', {
+    type: eventType,
+    timestamp: new Date().toISOString()
+  });
+
+  const store = useEventStore.getState();
+  const { isAssistantSpeaking, eventConfigs } = store;
   const eventConfig = eventConfigs.find((config: EventConfig) => config.eventType === eventType);
 
+  // Validación inicial
   if (!eventConfig) {
-    console.log(`[LOG 3.1] No configuration found for event type: ${eventType}`);
+    console.log('[Dispatch] Evento no configurado:', eventType);
     return;
   }
 
   if (!eventConfig.enabled) {
-    console.log(`[LOG 3.2] Event ${eventType} is disabled. Skipping processing.`);
+    console.log('[Dispatch] Evento deshabilitado:', {
+      type: eventType,
+      config: eventConfig
+    });
     return;
   }
 
-  console.log(`[LOG 4] Event ${eventType} is enabled. Proceeding with filtering.`);
-  console.log('[LOG 4.1] Current filter parameters:', eventConfig.filterParameters);
+  // Aplicar filtros
+  console.log('[Dispatch] Aplicando filtros con configuración:', {
+    type: eventType,
+    filters: eventConfig.filterParameters
+  });
 
   const passes = passesFilter(
     eventType as ConditionTypes, 
@@ -62,20 +73,37 @@ export function eventDispatcher(eventData: any, eventType: string) {
   );
 
   if (!passes) {
-    console.log('[LOG 4.2] Event filtered out by configuration');
+    console.log('[Dispatch] Evento filtrado por configuración');
     return;
   }
 
+  // Procesar evento
   if (isAssistantSpeaking) {
-    console.log('[LOG 5] Assistant is speaking, queueing event');
+    console.log('[Dispatch] Asistente hablando, encolando evento');
+    
     eventQueue.addEvent(eventData);
+    
+    // Mostrar estadísticas de la cola
+    const stats = eventQueue.getStats();
+    console.log('[Dispatch] Estado actual de la cola:', stats);
   } else {
-    console.log('[LOG 6] Assistant not speaking, displaying event directly');
-    // TODO: Format and append to the "Type something..." text area directly
-    console.log('Event data:', eventData);
+    console.log('[Dispatch] Procesando evento inmediatamente');
+    processEvent(eventData);
   }
 
-  console.log('[LOG 7] eventDispatcher completed processing');
+  console.log('[Dispatch] Procesamiento completado');
+}
+
+function processEvent(eventData: EventType) {
+  try {
+    // Aquí iría la lógica para mostrar el evento en la UI
+    console.log('[Dispatch] Evento procesado:', {
+      type: eventData.eventType,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Dispatch] Error al procesar evento:', error);
+  }
 }
 
 // Suscribirse a eventos del eventBus
