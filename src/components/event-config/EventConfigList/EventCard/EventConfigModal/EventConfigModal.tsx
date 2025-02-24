@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IoClose } from 'react-icons/io5';
 import './EventConfigModal.scss';
 
@@ -37,7 +37,8 @@ export const EventConfigModal: React.FC<EventConfigModalProps> = ({
     }
   };
 
-  const [filters, setFilters] = useState<ChatFilterConfig>(defaultFilters);
+  const [filters, setFilters] = useState<ChatFilterConfig>(currentConfig || defaultFilters);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleReset = () => {
     setFilters(defaultFilters);
@@ -45,9 +46,29 @@ export const EventConfigModal: React.FC<EventConfigModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Usar currentConfig cuando cambie
+  useEffect(() => {
+    setFilters(currentConfig || defaultFilters);
+  }, [currentConfig]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(filters);
+    setIsSaving(true);
+    console.log('[UI Modal] Iniciando guardado de configuración:', filters);
+    try {
+      await onSave(filters);
+      console.log('[UI Modal] Configuración guardada exitosamente');
+      console.log('[UI Modal] Estado final de filtros:', {
+        followerRole: filters.followerRole,
+        userStatus: filters.userStatus,
+        donorRange: filters.donorRange
+      });
+      onClose();
+    } catch (error) {
+      console.error('[UI Modal] Error al guardar configuración:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleFollowerRole = (role: 'noFollow' | 'follower' | 'friend') => {
@@ -201,11 +222,20 @@ export const EventConfigModal: React.FC<EventConfigModalProps> = ({
               </button>
             </div>
             <div className="right-buttons">
-              <button type="button" className="cancel" onClick={onClose}>
+              <button 
+                type="button" 
+                className="cancel" 
+                onClick={onClose}
+                disabled={isSaving}
+              >
                 Cancelar
               </button>
-              <button type="submit" className="save">
-                Guardar
+              <button 
+                type="submit" 
+                className={`save ${isSaving ? 'saving' : ''}`}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Guardando...' : 'Guardar'}
               </button>
             </div>
           </div>
