@@ -6,6 +6,9 @@ import { eventQueue } from './eventQueue';
 import eventBus from './eventBus';
 import { ChatFilterConfig } from './types/chatConfig';
 
+// Mantener un registro del estado de suscripción
+let eventSubscriptionsActive = false;
+
 interface EventConfig {
   eventType: string;
   enabled: boolean;
@@ -142,6 +145,40 @@ function processEvent(eventData: EventType) {
   }
 }
 
+// Función para manejar suscripciones basadas en el estado enabled
+function updateEventSubscriptions() {
+  const store = useEventStore.getState();
+  const { eventConfigs } = store;
+
+  console.log('[EventDispatcher] 🔄 Actualizando suscripciones de eventos');
+
+  // Primero, remover todas las suscripciones existentes
+  if (eventSubscriptionsActive) {
+    console.log('[EventDispatcher] 🔍 Removiendo suscripciones anteriores');
+    eventBus.off('tiktokChatMessage', (data) => {
+      eventDispatcher(data, 'tiktokChatMessage');
+    });
+    eventBus.off('spotifySongPlayed', (data) => {
+      eventDispatcher(data, 'spotifySongPlayed');
+    });
+    eventSubscriptionsActive = false;
+  }
+
+  // Crear nuevas suscripciones solo para eventos habilitados
+  eventConfigs.forEach(config => {
+    if (config.enabled) {
+      console.log(`[EventDispatcher] ✅ Habilitando suscripción para: ${config.eventType}`);
+      eventBus.on(config.eventType, (data) => {
+        eventDispatcher(data, config.eventType);
+      });
+    } else {
+      console.log(`[EventDispatcher] ⛔ Evento deshabilitado, no se suscribe: ${config.eventType}`);
+    }
+  });
+
+  eventSubscriptionsActive = true;
+}
+
 // Suscribirse a eventos del eventBus
 eventBus.on('tiktokChatMessage', (data) => {
   eventDispatcher(data, 'tiktokChatMessage');
@@ -150,3 +187,15 @@ eventBus.on('tiktokChatMessage', (data) => {
 eventBus.on('spotifySongPlayed', (data) => {
   eventDispatcher(data, 'spotifySongPlayed');
 });
+
+// Escuchar cambios en la configuración de eventos
+useEventStore.subscribe((state) => {
+  console.log('[EventDispatcher] 📢 Detectado cambio en configuración de eventos');
+  updateEventSubscriptions();
+});
+
+// Inicializar suscripciones
+updateEventSubscriptions();
+
+// Exportar la función de actualización para uso externo si es necesario
+export { updateEventSubscriptions };
