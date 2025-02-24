@@ -37,7 +37,6 @@ export default function SidePanel() {
   const loggerLastHeightRef = useRef<number>(-1);
   const { log, logs } = useLoggerStore();
   const [pendingMessages, setPendingMessages] = useState<string[]>([]);
-
   const [textInput, setTextInput] = useState("");
   const [selectedOption, setSelectedOption] = useState<{
     value: string;
@@ -68,39 +67,84 @@ export default function SidePanel() {
   // Escuchar mensajes aprobados
   useEffect(() => {
     const handleApprovedMessage = (message: string) => {
+      console.log('[SidePanel] 📥 Mensaje aprobado recibido:', {
+        message,
+        connected,
+        timestamp: new Date().toISOString()
+      });
+
       if (connected) {
-        // Si el asistente está conectado, enviar mensaje directamente
-        client.send([{ text: message }]);
+        console.log('[SidePanel] ⚡ Procesando mensaje inmediatamente');
+        // Cambiamos para usar setTextInput directamente
+        setTextInput(message);
+        // Usar un ref para mantener la referencia al timeout
+        const timeoutId = setTimeout(() => {
+          console.log('[SidePanel] ✉️ Enviando mensaje al asistente:', message);
+          if (message.trim()) {
+            client.send([{ text: message }]);
+            setTextInput("");
+          }
+        }, 1000);
+
+        return () => clearTimeout(timeoutId);
       } else {
-        // Si no está conectado, agregar a la cola de pendientes
+        console.log('[SidePanel] 🕒 Agregando mensaje a la cola de pendientes');
         setPendingMessages(prev => [...prev, message]);
       }
     };
 
+    console.log('[SidePanel] 🎯 Suscribiendo al evento approvedChatMessage');
     eventBus.on('approvedChatMessage', handleApprovedMessage);
+    
     return () => {
+      console.log('[SidePanel] 🔄 Limpiando suscripción de eventos');
       eventBus.off('approvedChatMessage', handleApprovedMessage);
     };
-  }, [connected, client]);
+  }, [connected]); // Removemos client de las dependencias
 
   // Procesar mensajes pendientes cuando el asistente se conecta
   useEffect(() => {
     if (connected && pendingMessages.length > 0) {
       console.log('[SidePanel] Procesando mensajes pendientes:', pendingMessages.length);
-      pendingMessages.forEach(message => {
-        client.send([{ text: message }]);
-      });
-      setPendingMessages([]); // Limpiar la cola después de procesar
+      // Procesar mensajes pendientes uno por uno con intervalo
+      const processNextMessage = () => {
+        const message = pendingMessages[0];
+        autoSubmitMessage(message);
+        setPendingMessages(prev => prev.slice(1));
+      };
+
+      const intervalId = setInterval(() => {
+        if (pendingMessages.length > 0) {
+          processNextMessage();
+        } else {
+          clearInterval(intervalId);
+        }
+      }, 1500); // 1.5 segundos entre cada mensaje pendiente
+
+      return () => clearInterval(intervalId);
     }
-  }, [connected, pendingMessages, client]);
+  }, [connected, pendingMessages]);
 
   const handleSubmit = () => {
+    if (!textInput.trim()) return;
+    
     client.send([{ text: textInput }]);
-
     setTextInput("");
     if (inputRef.current) {
       inputRef.current.innerText = "";
     }
+  };
+
+  // Auto-envío retrasado para mensajes aprobados
+  const autoSubmitMessage = (message: string) => {
+    console.log('[SidePanel] 📝 Estableciendo mensaje en el input:', message);
+    setTextInput(message);
+    
+    setTimeout(() => {
+      console.log('[SidePanel] ✉️ Enviando mensaje al asistente:', message);
+      client.send([{ text: message }]);
+      setTextInput("");
+    }, 1000); // 1 segundo de retraso
   };
 
   return (

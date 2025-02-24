@@ -51,6 +51,11 @@ export class TikTokService {
             interface Badge {
                 level: number;
             }
+            console.log('[TikTok] 📨 Mensaje de chat recibido:', {
+                raw: data,
+                timestamp: new Date().toISOString()
+            });
+
             const chatData = {
                 comment: data?.comment,
                 uniqueId: data?.uniqueId,
@@ -61,12 +66,14 @@ export class TikTokService {
                 isNewGifter: data?.isNewGifter,
                 isSubscriber: data?.isSubscriber,
                 topGifterRank: data?.topGifterRank,
+                eventType: 'tiktokChatMessage'  // Agregando explícitamente el tipo de evento
             };
-            console.log('[LOG 1] Mensaje recibido desde TikTok:', chatData);
+            
+            console.log('[TikTok] ⚙️ Mensaje procesado:', chatData);
             
             // Emitir el evento a través del eventBus
             eventBus.emit('tiktokChatMessage', chatData);
-            console.log('[LOG 2] Emitiendo tiktokChatMessage event a través de eventBus');
+            console.log('[TikTok] ✅ Evento emitido al eventBus');
         });
 
         this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.EMOTE, (data) => {

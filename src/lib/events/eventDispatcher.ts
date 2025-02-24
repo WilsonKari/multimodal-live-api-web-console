@@ -24,7 +24,7 @@ function passesFilter<T extends EventType>(
   eventData: T,
   filterParams: ChatFilterConfig | Record<string, any>
 ): boolean {
-  console.log('[Filter] Evaluando filtros para evento:', {
+  console.log('[Filter] 🔍 Evaluando filtros para evento:', {
     type: eventType,
     data: eventData,
     params: filterParams,
@@ -33,21 +33,22 @@ function passesFilter<T extends EventType>(
 
   if (eventType === 'tiktokChatMessage') {
     const passes = chatPassesFilter(eventData as TiktokChatMessageEvent, filterParams as ChatFilterConfig);
-    console.log('[Filter] Resultado del filtro de chat:', {
+    console.log('[Filter] 📋 Resultado del filtro de chat:', {
       passed: passes,
       filters: filterParams,
       message: (eventData as TiktokChatMessageEvent).comment,
-      user: (eventData as TiktokChatMessageEvent).nickname
+      user: (eventData as TiktokChatMessageEvent).nickname,
+      eventData: eventData // Agregando el objeto completo para depuración
     });
     return passes;
   }
 
-  console.log('[Filter] Tipo de evento no implementado:', eventType);
+  console.log('[Filter] ⚠️ Tipo de evento no implementado:', eventType);
   return true;
 }
 
 export function eventDispatcher(eventData: any, eventType: string) {
-  console.log('[Dispatch] Recibido evento:', {
+  console.log('[Dispatch] 📥 Recibido evento:', {
     type: eventType,
     data: eventData,
     timestamp: new Date().toISOString()
@@ -55,6 +56,16 @@ export function eventDispatcher(eventData: any, eventType: string) {
 
   const store = useEventStore.getState();
   const { isAssistantSpeaking, eventConfigs } = store;
+  
+  console.log('[Dispatch] 🔄 Estado actual:', {
+    isAssistantSpeaking,
+    configs: eventConfigs.map(c => ({
+      type: c.eventType,
+      enabled: c.enabled,
+      hasFilters: !!c.filterParameters
+    }))
+  });
+
   const eventConfig = eventConfigs.find((config: EventConfig) => config.eventType === eventType);
 
   // Validación inicial
@@ -108,16 +119,23 @@ function processEvent(eventData: EventType) {
   try {
     console.log('[Process] 🎯 Evento siendo procesado:', {
       type: eventData.eventType,
-      timestamp: new Date().toISOString(),
-      details: eventData
+      data: eventData,
+      timestamp: new Date().toISOString()
     });
 
-    // Aquí emitimos el evento especial para mensajes de chat aprobados
+    // Verificar específicamente eventos de chat
     if (eventData.eventType === 'tiktokChatMessage') {
       const chatEvent = eventData as TiktokChatMessageEvent;
       const messageForAssistant = `[${chatEvent.nickname}]: ${chatEvent.comment}`;
+      
+      console.log('[Process] 📨 Preparando mensaje para asistente:', {
+        message: messageForAssistant,
+        timestamp: new Date().toISOString()
+      });
+      
       eventBus.emit('approvedChatMessage', messageForAssistant);
-      console.log('[Process] 📨 Mensaje aprobado enviado al asistente:', messageForAssistant);
+      
+      console.log('[Process] ✅ Mensaje emitido al eventBus');
     }
   } catch (error) {
     console.error('[Process] 🔴 Error al procesar evento:', error);
