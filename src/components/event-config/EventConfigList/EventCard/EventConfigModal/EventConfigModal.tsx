@@ -2,30 +2,14 @@ import React, { useState } from 'react';
 import { IoClose } from 'react-icons/io5';
 import './EventConfigModal.scss';
 
-interface FilterConfig {
-  followerRole: {
-    noFollow: boolean;
-    follower: boolean;
-    friend: boolean;
-  };
-  userStatus: {
-    moderator: boolean;
-    subscriber: boolean;
-    newDonor: boolean;
-  };
-  donorRange: {
-    unrestricted: boolean;
-    min: number;
-    max: number;
-  };
-}
+import { ChatFilterConfig } from '../../../../../lib/events/types/chatConfig';
 
 interface EventConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (config: FilterConfig) => void;
+  onSave: (config: ChatFilterConfig) => void;
   eventType: string;
-  currentConfig: FilterConfig;
+  currentConfig: ChatFilterConfig;
 }
 
 export const EventConfigModal: React.FC<EventConfigModalProps> = ({
@@ -35,7 +19,7 @@ export const EventConfigModal: React.FC<EventConfigModalProps> = ({
   eventType,
   currentConfig
 }) => {
-  const defaultFilters: FilterConfig = {
+  const defaultFilters: ChatFilterConfig = {
     followerRole: {
       noFollow: true,
       follower: true,
@@ -53,7 +37,7 @@ export const EventConfigModal: React.FC<EventConfigModalProps> = ({
     }
   };
 
-  const [filters, setFilters] = useState<FilterConfig>(defaultFilters);
+  const [filters, setFilters] = useState<ChatFilterConfig>(defaultFilters);
 
   const handleReset = () => {
     setFilters(defaultFilters);
@@ -66,7 +50,7 @@ export const EventConfigModal: React.FC<EventConfigModalProps> = ({
     onSave(filters);
   };
 
-  const toggleFollowerRole = (role: keyof FilterConfig['followerRole']) => {
+  const toggleFollowerRole = (role: 'noFollow' | 'follower' | 'friend') => {
     setFilters(prev => ({
       ...prev,
       followerRole: {
@@ -76,7 +60,7 @@ export const EventConfigModal: React.FC<EventConfigModalProps> = ({
     }));
   };
 
-  const toggleUserStatus = (status: keyof FilterConfig['userStatus']) => {
+  const toggleUserStatus = (status: 'moderator' | 'subscriber' | 'newDonor') => {
     setFilters(prev => ({
       ...prev,
       userStatus: {

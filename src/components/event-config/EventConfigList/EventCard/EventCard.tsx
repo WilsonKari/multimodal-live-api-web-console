@@ -2,15 +2,25 @@ import React from 'react';
 import { IoSettingsOutline } from 'react-icons/io5';
 import { BsCircleFill } from 'react-icons/bs';
 import './EventCard.scss';
+import { ChatFilterConfig } from '../../../../lib/events/types/chatConfig';
 
-interface EventCardProps {
+type EventCardProps = {
   eventType: string;
   enabled: boolean;
   onToggle: () => void;
-  onConfigChange: (config: any) => void;
-  filterParameters: any;
   onConfigure: () => void;
-}
+} & (
+  | {
+      eventType: 'tiktokChatMessage';
+      onConfigChange: (config: ChatFilterConfig) => void;
+      filterParameters: ChatFilterConfig;
+    }
+  | {
+      eventType: string;
+      onConfigChange: (config: Record<string, any>) => void;
+      filterParameters: Record<string, any>;
+    }
+);
 
 const EventCard: React.FC<EventCardProps> = ({
   eventType,

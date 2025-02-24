@@ -1,9 +1,29 @@
 import { create } from 'zustand';
+import { ChatFilterConfig } from './types/chatConfig';
+
+// Configuración por defecto para el chat
+const defaultChatConfig: ChatFilterConfig = {
+  followerRole: {
+    noFollow: true,
+    follower: true,
+    friend: true
+  },
+  userStatus: {
+    moderator: true,
+    subscriber: true,
+    newDonor: true
+  },
+  donorRange: {
+    unrestricted: true,
+    min: 0,
+    max: 100
+  }
+};
 
 interface EventConfig {
   eventType: string;
   enabled: boolean;
-  filterParameters: any;
+  filterParameters: ChatFilterConfig | Record<string, any>;
 }
 
 interface EventStoreState {
@@ -13,18 +33,48 @@ interface EventStoreState {
   setIsAssistantSpeaking: (speaking: boolean) => void;
 }
 
+// Type guard para verificar si es configuración de chat
+function isChatConfig(config: any): config is ChatFilterConfig {
+  return config && 
+         'followerRole' in config && 
+         'userStatus' in config && 
+         'donorRange' in config;
+}
+
 export const useEventStore = create<EventStoreState>((set) => ({
   eventConfigs: [
-    // Initial event configurations (can also be loaded from eventsConfig.ts)
-    { eventType: 'tiktokChatMessage', enabled: true, filterParameters: {} },
-    { eventType: 'spotifySongPlayed', enabled: true, filterParameters: {} },
+    { 
+      eventType: 'tiktokChatMessage', 
+      enabled: true, 
+      filterParameters: defaultChatConfig 
+    },
+    { 
+      eventType: 'spotifySongPlayed', 
+      enabled: true, 
+      filterParameters: {} 
+    }
   ],
   isAssistantSpeaking: false,
   setEventConfig: (eventType, config) =>
     set((state) => ({
-      eventConfigs: state.eventConfigs.map((eventConfig) =>
-        eventConfig.eventType === eventType ? { ...eventConfig, ...config } : eventConfig
-      ),
+      eventConfigs: state.eventConfigs.map((eventConfig) => {
+        if (eventConfig.eventType === eventType) {
+          // Si es una actualización de filtros para el chat
+          if (config.filterParameters && eventType === 'tiktokChatMessage') {
+            return {
+              ...eventConfig,
+              ...config,
+              filterParameters: {
+                ...eventConfig.filterParameters,
+                ...(isChatConfig(config.filterParameters) ? config.filterParameters : {})
+              }
+            };
+          }
+          // Para otros tipos de eventos
+          return { ...eventConfig, ...config };
+        }
+        return eventConfig;
+      }),
     })),
   setIsAssistantSpeaking: (speaking) => set({ isAssistantSpeaking: speaking }),
 }));
