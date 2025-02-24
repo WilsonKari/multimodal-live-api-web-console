@@ -63,6 +63,7 @@ export const EventDisplayHandler: React.FC = () => {
             followRole: chatEvent.followRole,
             badges: chatEvent.userBadgeLevel
           });
+          console.log('[Display] mensaje llegó al final', chatEvent);
           break;
         }
 

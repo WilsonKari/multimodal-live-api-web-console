@@ -1,5 +1,5 @@
-import { TiktokChatMessageEvent } from "../eventTypes";
-import { ChatFilterConfig, ChatFilterRules } from "../types/chatConfig";
+import { TiktokChatMessageEvent } from '../eventTypes';
+import { ChatFilterConfig, ChatFilterRules } from '../types/chatConfig';
 
 export const tiktokChatMessageSchema = {
   followRole: {
@@ -62,83 +62,72 @@ function transformUIConfigToSchema(uiConfig: ChatFilterConfig): ChatFilterRules 
  * @param uiConfig Configuración de filtros de la UI
  * @returns true si el mensaje pasa los filtros, false en caso contrario
  */
-export function passesFilter(
-  event: TiktokChatMessageEvent,
-  uiConfig: ChatFilterConfig
-): boolean {
-  console.log('[LOG 7.2] Evaluando mensaje:', {
-    uniqueId: event.uniqueId,
-    nickname: event.nickname,
-    followRole: event.followRole,
-    badges: event.userBadgeLevel,
-    isMod: event.isModerator,
-    isNewGifter: event.isNewGifter,
-    isSubscriber: event.isSubscriber
+export function passesFilter(event: TiktokChatMessageEvent, config: ChatFilterConfig): boolean {
+  console.log('[ChatFilter] 🔍 Evaluando mensaje:', {
+    message: event.comment,
+    user: event.nickname,
+    timestamp: new Date().toISOString()
   });
 
-  if (!event) {
-    console.log('[LOG 7.3] Evento nulo, filtro fallido');
+  // Verificar rol de seguidor
+  const followRolePass = config.followerRole.noFollow && event.followRole === 0 ||
+                        config.followerRole.follower && event.followRole === 1 ||
+                        config.followerRole.friend && event.followRole === 2;
+
+  console.log('[ChatFilter] 👥 Evaluación de rol de seguidor:', {
+    userRole: event.followRole,
+    allowedRoles: config.followerRole,
+    passed: followRolePass
+  });
+
+  if (!followRolePass) {
+    console.log('[ChatFilter] ⛔ Mensaje filtrado por rol de seguidor');
     return false;
   }
 
-  const rules = transformUIConfigToSchema(uiConfig);
+  // Verificar estado del usuario
+  // Si todos los estados están permitidos, permitir cualquier mensaje
+  const allStatusAllowed = config.userStatus.moderator && 
+                          config.userStatus.subscriber && 
+                          config.userStatus.newDonor;
 
-  // Validar followRole
-  if (rules.followRole.length > 0) {
-    const followRolePass = rules.followRole.includes(event.followRole || 0);
-    console.log('[LOG 7.4] Check followRole:', {
-      allowed: rules.followRole,
-      actual: event.followRole,
-      passed: followRolePass
-    });
-    if (!followRolePass) return false;
+  // Si no todos los estados están permitidos, verificar el estado específico
+  const userStatusPass = allStatusAllowed || 
+                        (event.isModerator && config.userStatus.moderator) ||
+                        (event.isSubscriber && config.userStatus.subscriber) ||
+                        (event.isNewGifter && config.userStatus.newDonor);
+
+  console.log('[ChatFilter] 🎭 Evaluación de estado de usuario:', {
+    isModerator: event.isModerator,
+    isSubscriber: event.isSubscriber,
+    isNewGifter: event.isNewGifter,
+    allStatusAllowed: allStatusAllowed,
+    allowedStatus: config.userStatus,
+    passed: userStatusPass
+  });
+
+  if (!userStatusPass) {
+    console.log('[ChatFilter] ⛔ Mensaje filtrado por estado de usuario');
+    return false;
   }
 
-  // Validar userBadgeLevel
-  if (rules.userBadgeLevel !== undefined) {
-    const badgeLevelPass = event.userBadgeLevel !== undefined && 
-                          event.userBadgeLevel >= rules.userBadgeLevel;
-    console.log('[LOG 7.5] Check badgeLevel:', {
-      minRequired: rules.userBadgeLevel,
-      actual: event.userBadgeLevel,
-      passed: badgeLevelPass
-    });
-    if (!badgeLevelPass) return false;
+  // Verificar rango de donante
+  const donorRangePass = config.donorRange.unrestricted ||
+                        (event.topGifterRank !== undefined &&
+                         event.topGifterRank >= config.donorRange.min &&
+                         event.topGifterRank <= config.donorRange.max);
+
+  console.log('[ChatFilter] 🎁 Evaluación de rango de donante:', {
+    userRank: event.topGifterRank,
+    configRange: config.donorRange,
+    passed: donorRangePass
+  });
+
+  if (!donorRangePass) {
+    console.log('[ChatFilter] ⛔ Mensaje filtrado por rango de donante');
+    return false;
   }
 
-  // Validar isModerator
-  if (rules.isModerator !== undefined) {
-    const modPass = event.isModerator === rules.isModerator;
-    console.log('[LOG 7.6] Check moderator:', {
-      required: rules.isModerator,
-      actual: event.isModerator,
-      passed: modPass
-    });
-    if (!modPass) return false;
-  }
-
-  // Validar isNewGifter
-  if (rules.isNewGifter !== undefined) {
-    const gifterPass = event.isNewGifter === rules.isNewGifter;
-    console.log('[LOG 7.7] Check newGifter:', {
-      required: rules.isNewGifter,
-      actual: event.isNewGifter,
-      passed: gifterPass
-    });
-    if (!gifterPass) return false;
-  }
-
-  // Validar isSubscriber
-  if (rules.isSubscriber !== undefined) {
-    const subPass = event.isSubscriber === rules.isSubscriber;
-    console.log('[LOG 7.8] Check subscriber:', {
-      required: rules.isSubscriber,
-      actual: event.isSubscriber,
-      passed: subPass
-    });
-    if (!subPass) return false;
-  }
-
-  console.log('[LOG 7.9] Mensaje pasó todos los filtros');
+  console.log('[ChatFilter] ✅ Mensaje pasó todos los filtros');
   return true;
 }

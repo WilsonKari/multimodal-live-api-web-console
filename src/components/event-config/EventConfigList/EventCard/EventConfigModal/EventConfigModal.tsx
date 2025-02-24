@@ -19,6 +19,12 @@ export const EventConfigModal: React.FC<EventConfigModalProps> = ({
   eventType,
   currentConfig
 }) => {
+  console.log('[Modal Debug] Modal montado con props:', {
+    isOpen,
+    eventType,
+    currentConfig
+  });
+
   const defaultFilters: ChatFilterConfig = {
     followerRole: {
       noFollow: true,
@@ -48,59 +54,73 @@ export const EventConfigModal: React.FC<EventConfigModalProps> = ({
 
   // Usar currentConfig cuando cambie
   useEffect(() => {
+    console.log('[Modal Debug] Config actualizada:', currentConfig);
     setFilters(currentConfig || defaultFilters);
   }, [currentConfig]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    console.log('[UI Modal] Iniciando guardado de configuración:', filters);
+    console.log('[Modal Debug] Iniciando guardado:', {
+      filters,
+      eventType
+    });
     try {
       await onSave(filters);
-      console.log('[UI Modal] Configuración guardada exitosamente');
-      console.log('[UI Modal] Estado final de filtros:', {
-        followerRole: filters.followerRole,
-        userStatus: filters.userStatus,
-        donorRange: filters.donorRange
-      });
+      console.log('[Modal Debug] Guardado exitoso');
       onClose();
     } catch (error) {
-      console.error('[UI Modal] Error al guardar configuración:', error);
+      console.error('[Modal Debug] Error al guardar:', error);
     } finally {
       setIsSaving(false);
     }
   };
 
   const toggleFollowerRole = (role: 'noFollow' | 'follower' | 'friend') => {
-    setFilters(prev => ({
-      ...prev,
-      followerRole: {
-        ...prev.followerRole,
-        [role]: !prev.followerRole[role]
-      }
-    }));
+    console.log('[Modal Debug] Cambiando rol:', role);
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        followerRole: {
+          ...prev.followerRole,
+          [role]: !prev.followerRole[role]
+        }
+      };
+      console.log('[Modal Debug] Nuevo estado de filtros:', newFilters);
+      return newFilters;
+    });
   };
 
   const toggleUserStatus = (status: 'moderator' | 'subscriber' | 'newDonor') => {
-    setFilters(prev => ({
-      ...prev,
-      userStatus: {
-        ...prev.userStatus,
-        [status]: !prev.userStatus[status]
-      }
-    }));
+    console.log('[Modal Debug] Cambiando estado de usuario:', status);
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        userStatus: {
+          ...prev.userStatus,
+          [status]: !prev.userStatus[status]
+        }
+      };
+      console.log('[Modal Debug] Nuevo estado de filtros:', newFilters);
+      return newFilters;
+    });
   };
 
   const handleDonorRangeChange = (min: number, max: number) => {
-    setFilters(prev => ({
-      ...prev,
-      donorRange: {
-        ...prev.donorRange,
-        unrestricted: false,
-        min,
-        max
-      }
-    }));
+    console.log('[Modal Debug] Cambiando rango de donante:', { min, max });
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        donorRange: {
+          ...prev.donorRange,
+          unrestricted: false,
+          min,
+          max
+        }
+      };
+      console.log('[Modal Debug] Nuevo estado de filtros:', newFilters);
+      return newFilters;
+    });
   };
 
   const toggleUnrestricted = () => {
