@@ -4,18 +4,14 @@ import { tiktokService } from '../tiktok/tiktokService';
 import { spotifyService } from '../spotify/spotifyService';
 
 export function AssistantSpeakingHandler() {
-  const { setIsAssistantSpeaking, isAssistantSpeaking } = useEventStore();
+  const { setIsAssistantSpeaking } = useEventStore();
 
   useEffect(() => {
-    console.log('AssistantSpeakingHandler mounted');
-
     const handleAssistantSpeakingStarted = () => {
-      console.log('AssistantSpeakingHandler: assistantSpeakingStarted');
       setIsAssistantSpeaking(true);
     };
 
     const handleAssistantSpeakingEnded = () => {
-      console.log('AssistantSpeakingHandler: assistantSpeakingEnded');
       setIsAssistantSpeaking(false);
     };
 
@@ -33,7 +29,5 @@ export function AssistantSpeakingHandler() {
     };
   }, [setIsAssistantSpeaking]);
 
-  console.log('AssistantSpeakingHandler isAssistantSpeaking:', isAssistantSpeaking);
-
-  return null; // This component doesn't render anything
+  return null;
 }

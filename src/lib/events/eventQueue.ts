@@ -16,7 +16,6 @@ export const eventQueue = {
       priority: event.eventType === 'tiktokChatMessage' ? 1 : 2
     };
 
-    // Insertar ordenado por prioridad y timestamp
     const insertIndex = queue.findIndex(
       e => e.priority > queuedEvent.priority || 
           (e.priority === queuedEvent.priority && e.timestamp > queuedEvent.timestamp)
@@ -27,32 +26,15 @@ export const eventQueue = {
     } else {
       queue.splice(insertIndex, 0, queuedEvent);
     }
-
-    console.log('[Queue] Evento añadido:', {
-      type: event.eventType,
-      priority: queuedEvent.priority,
-      queueSize: queue.length,
-      timestamp: new Date(queuedEvent.timestamp).toISOString()
-    });
   },
 
   getEvents: () => {
-    console.log('[Queue] Consultando eventos:', {
-      totalEvents: queue.length,
-      types: queue.map(e => e.event.eventType)
-    });
     return [...queue.map(qe => qe.event)];
   },
 
   removeEvent: () => {
     const removed = queue.shift();
     if (removed) {
-      console.log('[Queue] Evento removido:', {
-        type: removed.event.eventType,
-        priority: removed.priority,
-        queueSize: queue.length,
-        waitTime: Date.now() - removed.timestamp
-      });
       return removed.event;
     }
     return null;
@@ -63,9 +45,7 @@ export const eventQueue = {
   },
 
   clear: () => {
-    const size = queue.length;
     queue.length = 0;
-    console.log('[Queue] Cola limpiada:', { previousSize: size });
   },
 
   getStats: () => {
@@ -84,7 +64,6 @@ export const eventQueue = {
       stats.averageWaitTime /= queue.length;
     }
 
-    console.log('[Queue] Estadísticas:', stats);
     return stats;
   }
 };

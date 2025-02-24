@@ -31,31 +31,15 @@ export class TikTokService {
     private setupEventListeners(): void {
         if (!this.socket) return;
 
-        // Eventos de conexión básica
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.CONNECT, () => {
-            console.log('✅ Conectado al servidor de TikTok');
-        });
-
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.CONNECT, () => {});
         this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.DISCONNECT, () => {
-            console.log('❌ Desconectado del servidor de TikTok');
-            // Intentar reconexión automática
             this.reconnect();
         });
-
         this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.ERROR, (error) => {
-            console.error('🔴 Error en la conexión:', error);
+            console.error('Error de conexión:', error);
         });
 
-        // Eventos de chat y mensajes
         this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.CHAT_MESSAGE, (data) => {
-            interface Badge {
-                level: number;
-            }
-            console.log('[TikTok] 📨 Mensaje de chat recibido:', {
-                raw: data,
-                timestamp: new Date().toISOString()
-            });
-
             const chatData = {
                 comment: data?.comment,
                 uniqueId: data?.uniqueId,
@@ -66,82 +50,34 @@ export class TikTokService {
                 isNewGifter: data?.isNewGifter,
                 isSubscriber: data?.isSubscriber,
                 topGifterRank: data?.topGifterRank,
-                eventType: 'tiktokChatMessage'  // Agregando explícitamente el tipo de evento
+                eventType: 'tiktokChatMessage'
             };
-            
-            console.log('[TikTok] ⚙️ Mensaje procesado:', chatData);
-            
-            // Emitir el evento a través del eventBus
             eventBus.emit('tiktokChatMessage', chatData);
-            console.log('[TikTok] ✅ Evento emitido al eventBus');
         });
 
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.EMOTE, (data) => {
-            //console.log('Emote recibido:', data);
-        });
-
-        // Eventos de regalos y monetización
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.GIFT, (data) => {
-            //console.log('Regalo recibido:', data);
-        });
-
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.ENVELOPE, (data) => {
-            //console.log('Sobre especial recibido:', data);
-        });
-
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.SUBSCRIBE, (data) => {
-            //console.log('Nueva suscripción:', data);
-        });
-
-        // Eventos de interacción
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.LIKE, (data) => {
-            //console.log('Like recibido:', data);
-        });
-
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.SHARE, (data) => {
-            //console.log('Stream compartido:', data);
-        });
-
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.FOLLOW, (data) => {
-            //console.log('Nuevo seguidor:', data);
-        });
-
-        // Eventos de sala y usuarios
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.MEMBER, (data) => {
-            //console.log('Nuevo miembro:', data);
-        });
-
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.ROOM_USER, (data) => {
-            //console.log('Información de usuario en sala:', data);
-        });
-
-        // Eventos de preguntas y batallas
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.QUESTION_NEW, (data) => {
-            //console.log('Nueva pregunta:', data);
-        });
-
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.LINK_MIC_BATTLE, (data) => {
-            //console.log('Batalla de micrófono:', data);
-        });
-
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.LINK_MIC_ARMIES, (data) => {
-            //console.log('Ejércitos en batalla:', data);
-        });
-
-        // Otros eventos
-        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.LIVE_INTRO, (data) => {
-            //console.log('Introducción en vivo:', data);
-        });
+        // Setup empty handlers for other events
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.EMOTE, () => {});
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.GIFT, () => {});
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.ENVELOPE, () => {});
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.SUBSCRIBE, () => {});
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.LIKE, () => {});
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.SHARE, () => {});
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.FOLLOW, () => {});
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.MEMBER, () => {});
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.ROOM_USER, () => {});
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.QUESTION_NEW, () => {});
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.LINK_MIC_BATTLE, () => {});
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.LINK_MIC_ARMIES, () => {});
+        this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.LIVE_INTRO, () => {});
     }
 
-    // Métodos públicos para interactuar con el socket
+    // Public methods
     public disconnect(): void {
         this.socket?.disconnect();
     }
 
     public reconnect(): void {
         if (this.socket && !this.socket.connected) {
-            console.log('Intentando reconexión al servidor TikTok...');
             this.socket.connect();
         }
     }

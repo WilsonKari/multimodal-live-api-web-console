@@ -57,22 +57,10 @@ export const useEventStore = create<EventStoreState>((set) => ({
   isAssistantSpeaking: false,
   setEventConfig: (eventType, config) =>
     set((state) => {
-      console.log('[Store] Iniciando actualización de configuración:', {
-        eventType,
-        updateType: config.enabled !== undefined ? 'Toggle' : 'FilterUpdate',
-        timestamp: new Date().toISOString()
-      });
-
       const updatedConfigs = state.eventConfigs.map((eventConfig) => {
         if (eventConfig.eventType === eventType) {
           // Si es una actualización de filtros para el chat
           if (config.filterParameters && eventType === 'tiktokChatMessage') {
-            console.log('[Store] Actualizando filtros de chat:', {
-              currentFilters: eventConfig.filterParameters,
-              newFilters: config.filterParameters,
-              isValidConfig: isChatConfig(config.filterParameters)
-            });
-
             const updatedConfig = {
               ...eventConfig,
               ...config,
@@ -81,30 +69,17 @@ export const useEventStore = create<EventStoreState>((set) => ({
                 ...(isChatConfig(config.filterParameters) ? config.filterParameters : {})
               }
             };
-
-            console.log('[Store] Configuración de chat actualizada:', updatedConfig);
             return updatedConfig;
           }
           
           // Para otros tipos de eventos
-          console.log('[Store] Actualizando configuración general');
           return { ...eventConfig, ...config };
         }
         return eventConfig;
       });
 
-      console.log('[Store] Estado actualizado:', {
-        configsUpdated: updatedConfigs.length,
-        timestamp: new Date().toISOString()
-      });
-
       return { eventConfigs: updatedConfigs };
     }),
-  setIsAssistantSpeaking: (speaking) => {
-    console.log('[Store] Actualizando estado del asistente:', {
-      speaking,
-      timestamp: new Date().toISOString()
-    });
-    set({ isAssistantSpeaking: speaking });
-  },
+  setIsAssistantSpeaking: (speaking) =>
+    set({ isAssistantSpeaking: speaking }),
 }));
