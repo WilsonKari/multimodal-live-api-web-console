@@ -75,14 +75,23 @@ export default function SidePanel() {
 
       if (connected) {
         console.log('[SidePanel] ⚡ Procesando mensaje inmediatamente');
-        // Cambiamos para usar setTextInput directamente
         setTextInput(message);
-        // Usar un ref para mantener la referencia al timeout
+        
+        // Verificar estado de conexión antes de enviar
         const timeoutId = setTimeout(() => {
-          console.log('[SidePanel] ✉️ Enviando mensaje al asistente:', message);
-          if (message.trim()) {
-            client.send([{ text: message }]);
-            setTextInput("");
+          console.log('[SidePanel] ✉️ Verificando conexión antes de enviar mensaje');
+          if (connected && message.trim()) { // Doble verificación de connected
+            try {
+              client.send([{ text: message }]);
+              setTextInput("");
+            } catch (error) {
+              console.error('[SidePanel] ❌ Error al enviar mensaje:', error);
+              // Guardar mensaje en pendientes si hay error
+              setPendingMessages(prev => [...prev, message]);
+            }
+          } else {
+            console.log('[SidePanel] ⏸️ Asistente desconectado, guardando mensaje en pendientes');
+            setPendingMessages(prev => [...prev, message]);
           }
         }, 1000);
 
@@ -100,7 +109,7 @@ export default function SidePanel() {
       console.log('[SidePanel] 🔄 Limpiando suscripción de eventos');
       eventBus.off('approvedChatMessage', handleApprovedMessage);
     };
-  }, [connected]); // Removemos client de las dependencias
+  }, [connected, client]);
 
   // Procesar mensajes pendientes cuando el asistente se conecta
   useEffect(() => {
@@ -125,26 +134,49 @@ export default function SidePanel() {
     }
   }, [connected, pendingMessages]);
 
+  // Manejar el envío manual de mensajes
   const handleSubmit = () => {
-    if (!textInput.trim()) return;
+    if (!textInput.trim() || !connected) return;
     
-    client.send([{ text: textInput }]);
-    setTextInput("");
-    if (inputRef.current) {
-      inputRef.current.innerText = "";
+    try {
+      client.send([{ text: textInput }]);
+      setTextInput("");
+      if (inputRef.current) {
+        inputRef.current.innerText = "";
+      }
+    } catch (error) {
+      console.error('[SidePanel] ❌ Error al enviar mensaje:', error);
+      // Opcional: Mostrar algún mensaje de error al usuario
     }
   };
 
   // Auto-envío retrasado para mensajes aprobados
   const autoSubmitMessage = (message: string) => {
+    if (!connected) {
+      console.log('[SidePanel] ⏸️ Asistente desconectado, no se puede enviar mensaje');
+      setPendingMessages(prev => [...prev, message]);
+      return;
+    }
+
     console.log('[SidePanel] 📝 Estableciendo mensaje en el input:', message);
     setTextInput(message);
     
-    setTimeout(() => {
-      console.log('[SidePanel] ✉️ Enviando mensaje al asistente:', message);
-      client.send([{ text: message }]);
-      setTextInput("");
-    }, 1000); // 1 segundo de retraso
+    const timeoutId = setTimeout(() => {
+      if (connected && message.trim()) { // Verificar conexión nuevamente
+        try {
+          console.log('[SidePanel] ✉️ Enviando mensaje al asistente:', message);
+          client.send([{ text: message }]);
+          setTextInput("");
+        } catch (error) {
+          console.error('[SidePanel] ❌ Error al enviar mensaje:', error);
+          setPendingMessages(prev => [...prev, message]);
+        }
+      } else {
+        setPendingMessages(prev => [...prev, message]);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
   };
 
   return (
