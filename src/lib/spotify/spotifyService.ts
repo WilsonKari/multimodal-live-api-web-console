@@ -7,6 +7,9 @@ export class SpotifyService {
     private socket: Socket | null = null;
     private static instance: SpotifyService;
     private connected = false;
+    private lastTrackInfo: string | null = null;
+    private lastUpdateTime: number = 0;
+    private readonly DEBOUNCE_TIME = 2000; // 2 segundos entre actualizaciones
 
     private constructor() {
         this.initializeSocket();
@@ -62,15 +65,39 @@ export class SpotifyService {
             this.connected = false;
         });
 
-        // Evento de canción reproducida - Verificación directa del estado
+        // Evento de canción reproducida - Con control de duplicados
         this.socket.on(SPOTIFY_SOCKET_CONFIG.EVENTS.SONG_PLAYED, (trackInfo) => {
-            // Verificar el estado directamente desde el store
+            const currentTime = Date.now();
+            const trackId = `${trackInfo?.name}-${trackInfo?.artists?.join(',')}`;
+
+            // Verificar si es el mismo track y si no ha pasado suficiente tiempo
+            if (this.lastTrackInfo === trackId && 
+                currentTime - this.lastUpdateTime < this.DEBOUNCE_TIME) {
+                console.log('[Spotify-Debug] Evento duplicado ignorado:', {
+                    trackId,
+                    timeSinceLastUpdate: currentTime - this.lastUpdateTime,
+                    timestamp: new Date().toISOString()
+                });
+                return;
+            }
+
+            // Verificar el estado desde el store
             const store = useEventStore.getState();
             const spotifyConfig = store.eventConfigs.find(config => config.eventType === 'spotifySongPlayed');
 
             if (spotifyConfig?.enabled) {
                 const messageForAssistant = `[Spotify] Reproduciendo: "${trackInfo?.name}" por ${trackInfo?.artists?.join(', ')}`;
-                // Emitir directamente al canal de mensajes aprobados
+                console.log('[Spotify-Debug] Emitiendo nuevo evento:', {
+                    messageForAssistant,
+                    trackId,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Actualizar control de duplicados
+                this.lastTrackInfo = trackId;
+                this.lastUpdateTime = currentTime;
+                
+                // Emitir al canal de mensajes aprobados
                 eventBus.emit('approvedChatMessage', messageForAssistant);
             }
         });

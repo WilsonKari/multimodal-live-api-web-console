@@ -69,12 +69,20 @@ export default function SidePanel() {
     const handleApprovedMessage = (message: string) => {
       // Si es un mensaje de Spotify, procesarlo directamente sin verificaciones adicionales
       if (message.startsWith('[Spotify]')) {
+        console.log('[LOG-SPOTIFY] Mensaje entrando al cuadro de texto:', {
+          message,
+          connected,
+          queueLength: pendingMessages.length,
+          timestamp: new Date().toISOString()
+        });
+
         if (connected) {
-          console.log('[LOG-S1] Procesando mensaje de Spotify:', {
-            message,
-            timestamp: new Date().toISOString()
-          });
-          
+          // Verificar si ya existe el mismo mensaje en la cola
+          if (pendingMessages.includes(message)) {
+            console.log('[LOG-SPOTIFY] Mensaje duplicado en cola, ignorando');
+            return;
+          }
+
           setTextInput(message);
           const timeoutId = setTimeout(() => {
             if (connected && message.trim()) {
@@ -82,6 +90,7 @@ export default function SidePanel() {
                 client.send([{ text: message }]);
                 setTextInput("");
               } catch (error) {
+                console.error('[LOG-SPOTIFY] Error al enviar mensaje:', error);
                 setPendingMessages(prev => [...prev, message]);
               }
             }
@@ -137,7 +146,7 @@ export default function SidePanel() {
     return () => {
       eventBus.off('approvedChatMessage', handleApprovedMessage);
     };
-  }, [connected, client]);
+  }, [connected, client, pendingMessages]);
 
   // Procesar mensajes pendientes cuando el asistente se conecta
   useEffect(() => {
