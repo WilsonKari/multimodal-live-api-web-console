@@ -50,13 +50,13 @@ export const EventConfigModal: React.FC<EventConfigModalProps> = ({
     setFilters(defaultFilters);
   };
 
-  if (!isOpen) return null;
-
   // Usar currentConfig cuando cambie
   useEffect(() => {
     console.log('[Modal Debug] Config actualizada:', currentConfig);
     setFilters(currentConfig || defaultFilters);
   }, [currentConfig]);
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
