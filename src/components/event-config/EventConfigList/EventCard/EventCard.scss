@@ -75,9 +75,28 @@
         background: var(--Neutral-20);
         color: var(--Neutral-90);
         transition: background-color 0.2s ease;
+        cursor: pointer;
 
         &:hover {
           background: var(--Neutral-12);
+        }
+        
+        &.disabled {
+          color: var(--Neutral-70);
+          pointer-events: auto;
+          cursor: pointer;
+          
+          &:hover {
+            background: var(--Red-100);
+            color: var(--Neutral-10);
+          }
+        }
+        
+        &.enabled {
+          &:hover {
+            background: var(--Green-100);
+            color: var(--Neutral-10);
+          }
         }
       }
     }
