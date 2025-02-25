@@ -55,6 +55,11 @@ function processEvent(eventData: EventType) {
       timestamp: new Date().toISOString()
     });
 
+    // No procesar eventos de Spotify aquí, ya que se manejan directamente
+    if (eventData.eventType === 'spotifySongPlayed') {
+      return;
+    }
+
     // Verificar nuevamente el estado antes de procesar
     if (!isEventEnabled(eventData.eventType)) {
       console.log('[LOG-6] Evento bloqueado en processEvent:', {
@@ -84,7 +89,13 @@ export function eventDispatcher(eventData: any, eventType: string) {
     timestamp: new Date().toISOString()
   });
 
-  // Verificación inmediata del estado enabled
+  // Para Spotify, solo verificamos si está habilitado
+  if (eventType === 'spotifySongPlayed') {
+    // No necesitamos procesar nada más para Spotify
+    return;
+  }
+
+  // El resto del procesamiento solo para eventos de TikTok
   if (!isEventEnabled(eventType)) {
     console.log('[LOG-2] Evento bloqueado en primera verificación:', {
       eventType,
@@ -97,7 +108,6 @@ export function eventDispatcher(eventData: any, eventType: string) {
   const { isAssistantSpeaking, eventConfigs } = store;
   const eventConfig = eventConfigs.find((config: EventConfig) => config.eventType === eventType);
 
-  // Doble verificación del estado
   if (!eventConfig || !eventConfig.enabled) {
     return;
   }

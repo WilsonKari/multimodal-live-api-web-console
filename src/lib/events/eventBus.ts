@@ -3,6 +3,14 @@ import { useEventStore } from './eventStore';
 
 class EventBus extends EventEmitter {
     isEventEnabled(eventType: string): boolean {
+        // Para eventos de Spotify, solo verificamos en el store sin logs adicionales
+        if (eventType === 'spotifySongPlayed') {
+            const store = useEventStore.getState();
+            const config = store.eventConfigs.find(config => config.eventType === eventType);
+            return config?.enabled || false;
+        }
+
+        // Para otros eventos, mantenemos la lógica y logs existentes
         const store = useEventStore.getState();
         const config = store.eventConfigs.find(config => config.eventType === eventType);
         const enabled = config?.enabled || false;
@@ -18,7 +26,13 @@ class EventBus extends EventEmitter {
     }
 
     emit(eventType: string, ...args: any[]): boolean {
-        if (eventType !== 'eventStateChanged' && !this.isEventEnabled(eventType)) {
+        // Si es un evento de Spotify o de cambio de estado, no aplicar verificación adicional
+        if (eventType === 'spotifySongPlayed' || eventType === 'eventStateChanged' || eventType === 'approvedChatMessage') {
+            return super.emit(eventType, ...args);
+        }
+
+        // Para otros eventos, mantener la verificación y logs
+        if (!this.isEventEnabled(eventType)) {
             console.log('[LOG-7] Evento bloqueado por eventBus:', {
                 eventType,
                 timestamp: new Date().toISOString()

@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { SPOTIFY_SOCKET_CONFIG } from './spotifyConfig';
 import eventBus from '../events/eventBus';
+import { useEventStore } from '../events/eventStore';
 
 export class SpotifyService {
     private socket: Socket | null = null;
@@ -32,31 +33,25 @@ export class SpotifyService {
         if (!this.socket) return;
 
         // Eventos de conexión básica
-        this.socket.on(SPOTIFY_SOCKET_CONFIG.EVENTS.CONNECT, () => {
-            console.log('✅ Conectado al servidor de Spotify');
-        });
-
+        this.socket.on(SPOTIFY_SOCKET_CONFIG.EVENTS.CONNECT, () => {});
         this.socket.on(SPOTIFY_SOCKET_CONFIG.EVENTS.DISCONNECT, () => {
-            console.log('❌ Desconectado del servidor de Spotify');
-            // Intentar reconexión automática
             this.reconnect();
         });
-
         this.socket.on(SPOTIFY_SOCKET_CONFIG.EVENTS.ERROR, (error) => {
-            console.error('🔴 Error en la conexión:', error);
+            console.error('Error de conexión:', error);
         });
 
-        // Evento de canción reproducida
+        // Evento de canción reproducida - Verificación directa del estado
         this.socket.on(SPOTIFY_SOCKET_CONFIG.EVENTS.SONG_PLAYED, (trackInfo) => {
-            console.log('[LOG 1] Spotify song played:', {
-                name: trackInfo?.name,
-                artists: trackInfo?.artists,
-                image_url: trackInfo?.image_url
-            });
-            
-            // Emitir el evento a través del eventBus
-            eventBus.emit('spotifySongPlayed', trackInfo);
-            console.log('[LOG 2] Emitiendo spotifySongPlayed event a través de eventBus');
+            // Verificar el estado directamente desde el store
+            const store = useEventStore.getState();
+            const spotifyConfig = store.eventConfigs.find(config => config.eventType === 'spotifySongPlayed');
+
+            if (spotifyConfig?.enabled) {
+                const messageForAssistant = `[Spotify] Reproduciendo: "${trackInfo?.name}" por ${trackInfo?.artists?.join(', ')}`;
+                // Emitir directamente al canal de mensajes aprobados
+                eventBus.emit('approvedChatMessage', messageForAssistant);
+            }
         });
     }
 

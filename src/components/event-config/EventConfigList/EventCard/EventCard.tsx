@@ -62,12 +62,14 @@ const EventCard: React.FC<EventCardProps> = ({
         >
           {enabled ? 'Desactivar' : 'Activar'}
         </button>
-        <button 
-          className="configure"
-          onClick={onConfigure}
-        >
-          <IoSettingsOutline /> Configurar
-        </button>
+        {eventType !== 'spotifySongPlayed' && (
+          <button 
+            className="configure"
+            onClick={onConfigure}
+          >
+            <IoSettingsOutline /> Configurar
+          </button>
+        )}
       </div>
     </div>
   );

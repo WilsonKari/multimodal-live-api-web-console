@@ -67,6 +67,33 @@ export default function SidePanel() {
   // Escuchar mensajes aprobados
   useEffect(() => {
     const handleApprovedMessage = (message: string) => {
+      // Si es un mensaje de Spotify, procesarlo directamente sin verificaciones adicionales
+      if (message.startsWith('[Spotify]')) {
+        if (connected) {
+          console.log('[LOG-S1] Procesando mensaje de Spotify:', {
+            message,
+            timestamp: new Date().toISOString()
+          });
+          
+          setTextInput(message);
+          const timeoutId = setTimeout(() => {
+            if (connected && message.trim()) {
+              try {
+                client.send([{ text: message }]);
+                setTextInput("");
+              } catch (error) {
+                setPendingMessages(prev => [...prev, message]);
+              }
+            }
+          }, 1000);
+          return () => clearTimeout(timeoutId);
+        } else {
+          setPendingMessages(prev => [...prev, message]);
+        }
+        return;
+      }
+
+      // Para mensajes que no son de Spotify, mantener la lógica existente
       console.log('[LOG-9] Mensaje a punto de ser procesado:', {
         message,
         eventEnabled: eventBus.isEventEnabled('tiktokChatMessage'),
@@ -74,7 +101,6 @@ export default function SidePanel() {
         timestamp: new Date().toISOString()
       });
 
-      // Verificar si el evento de chat está habilitado antes de procesar
       if (!eventBus.isEventEnabled('tiktokChatMessage')) {
         return;
       }
