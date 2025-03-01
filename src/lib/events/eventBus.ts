@@ -26,8 +26,25 @@ class EventBus extends EventEmitter {
     }
 
     emit(eventType: string, ...args: any[]): boolean {
+        // Verificación especial para el evento approvedChatMessage si proviene de TikTok
+        if (eventType === 'approvedChatMessage') {
+            // Si el mensaje es de TikTok (comienza con "[" pero no con "[Spotify]")
+            const message = args[0] as string;
+            if (message && message.startsWith('[') && !message.startsWith('[Spotify]')) {
+                // Verificar si el evento de TikTok está habilitado
+                if (!this.isEventEnabled('tiktokChatMessage')) {
+                    console.log('[EventBus] Bloqueando approvedChatMessage de TikTok porque el evento está deshabilitado:', {
+                        message,
+                        timestamp: new Date().toISOString()
+                    });
+                    return false;
+                }
+            }
+            return super.emit(eventType, ...args);
+        }
+        
         // Si es un evento de Spotify o de cambio de estado, no aplicar verificación adicional
-        if (eventType === 'spotifySongPlayed' || eventType === 'eventStateChanged' || eventType === 'approvedChatMessage') {
+        if (eventType === 'spotifySongPlayed' || eventType === 'eventStateChanged') {
             return super.emit(eventType, ...args);
         }
 

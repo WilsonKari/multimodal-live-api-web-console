@@ -102,7 +102,7 @@ export default function SidePanel() {
         return;
       }
 
-      // Para mensajes que no son de Spotify, mantener la lógica existente
+      // Para mensajes que no son de Spotify (son de TikTok), verificar de forma muy estricta
       console.log('[LOG-9] Mensaje a punto de ser procesado:', {
         message,
         eventEnabled: eventBus.isEventEnabled('tiktokChatMessage'),
@@ -110,7 +110,12 @@ export default function SidePanel() {
         timestamp: new Date().toISOString()
       });
 
+      // Verificación estricta: si el evento TikTok está deshabilitado, no procesar el mensaje
       if (!eventBus.isEventEnabled('tiktokChatMessage')) {
+        console.log('[LOG-SIDEPANEL] Bloqueando mensaje de TikTok porque el evento está deshabilitado:', {
+          message,
+          timestamp: new Date().toISOString()
+        });
         return;
       }
 
@@ -120,6 +125,11 @@ export default function SidePanel() {
         const timeoutId = setTimeout(() => {
           // Verificar nuevamente antes de enviar, por si cambió el estado
           if (!eventBus.isEventEnabled('tiktokChatMessage')) {
+            console.log('[LOG-SIDEPANEL] Bloqueando envío de mensaje de TikTok porque el evento se deshabilitó durante el timeout:', {
+              message,
+              timestamp: new Date().toISOString()
+            });
+            setTextInput("");
             return;
           }
 
@@ -137,7 +147,15 @@ export default function SidePanel() {
 
         return () => clearTimeout(timeoutId);
       } else {
-        setPendingMessages(prev => [...prev, message]);
+        // Verificar si debemos agregar mensajes a la cola cuando no estamos conectados
+        if (eventBus.isEventEnabled('tiktokChatMessage')) {
+          setPendingMessages(prev => [...prev, message]);
+        } else {
+          console.log('[LOG-SIDEPANEL] No añadiendo mensaje a la cola porque el evento está deshabilitado:', {
+            message,
+            timestamp: new Date().toISOString()
+          });
+        }
       }
     };
 

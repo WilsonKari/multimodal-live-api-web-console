@@ -70,6 +70,20 @@ function processEvent(eventData: EventType) {
     }
 
     if (eventData.eventType === 'tiktokChatMessage') {
+      // Verificación adicional para evitar procesamiento si el evento de TikTok está deshabilitado
+      const store = useEventStore.getState();
+      const isTiktokEnabled = store.eventConfigs.find(
+        config => config.eventType === 'tiktokChatMessage'
+      )?.enabled || false;
+
+      if (!isTiktokEnabled) {
+        console.log('[LOG-BREAK] Evento de TikTok bloqueado en processEvent porque está deshabilitado:', {
+          eventType: eventData.eventType,
+          timestamp: new Date().toISOString()
+        });
+        return;
+      }
+
       const chatEvent = eventData as TiktokChatMessageEvent;
       const messageForAssistant = `[${chatEvent.nickname}]: ${chatEvent.comment}`;
       console.log('[LOG-8] Emitiendo mensaje aprobado:', {
