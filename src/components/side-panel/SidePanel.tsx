@@ -121,40 +121,96 @@ export default function SidePanel() {
         }
         return;
       }
+      
+      // Si es un mensaje de TikTok, procesarlo con lógica similar a Spotify
+      if (message.startsWith('[TikTok]')) {
+        // Verificar si el mensaje es un duplicado reciente
+        if (recentMessages.has(message)) {
+          console.log('[LOG-TIKTOK] Mensaje duplicado descartado:', {
+            message,
+            timestamp: new Date().toISOString()
+          });
+          return;
+        }
 
-      // Para mensajes que no son de Spotify (son de TikTok), verificar de forma muy estricta
-      console.log('[LOG-9] Mensaje a punto de ser procesado:', {
+        // Registrar mensaje como reciente
+        recentMessages.add(message);
+        // Configurar eliminación automática después de un tiempo
+        setTimeout(() => {
+          recentMessages.delete(message);
+        }, RECENT_MESSAGE_EXPIRY);
+
+        console.log('[LOG-TIKTOK] Mensaje entrando al cuadro de texto:', {
+          message,
+          connected,
+          queueLength: pendingMessages.length,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Verificar si el evento de TikTok está habilitado
+        if (!eventBus.isEventEnabled('tiktokChatMessage')) {
+          console.log('[LOG-TIKTOK] Bloqueando mensaje porque el evento está deshabilitado:', {
+            message,
+            timestamp: new Date().toISOString()
+          });
+          return;
+        }
+
+        if (connected) {
+          // Verificar si ya existe el mismo mensaje en la cola
+          if (pendingMessages.includes(message)) {
+            console.log('[LOG-TIKTOK] Mensaje duplicado en cola, ignorando');
+            return;
+          }
+
+          setTextInput(message);
+          const timeoutId = setTimeout(() => {
+            // Verificar nuevamente si el evento sigue habilitado
+            if (!eventBus.isEventEnabled('tiktokChatMessage')) {
+              console.log('[LOG-TIKTOK] Bloqueando envío porque el evento se deshabilitó durante el timeout:', {
+                message,
+                timestamp: new Date().toISOString()
+              });
+              setTextInput("");
+              return;
+            }
+            
+            if (connected && message.trim()) {
+              try {
+                client.send([{ text: message }]);
+                setTextInput("");
+              } catch (error) {
+                console.error('[LOG-TIKTOK] Error al enviar mensaje:', error);
+                setPendingMessages(prev => [...prev, message]);
+              }
+            }
+          }, 1000);
+          return () => clearTimeout(timeoutId);
+        } else {
+          // Solo añadir a la cola si el evento está habilitado
+          if (eventBus.isEventEnabled('tiktokChatMessage')) {
+            setPendingMessages(prev => [...prev, message]);
+          } else {
+            console.log('[LOG-TIKTOK] No añadiendo mensaje a la cola porque el evento está deshabilitado:', {
+              message,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+        return;
+      }
+
+      // Para otros tipos de mensajes (que no son ni de Spotify ni de TikTok)
+      console.log('[LOG] Mensaje genérico a punto de ser procesado:', {
         message,
-        // La verificación de eventos de TikTok está comentada ya que ese flujo se ha desactivado
-        // eventEnabled: eventBus.isEventEnabled('tiktokChatMessage'),
-        eventEnabled: true, // Siempre permitimos mensajes ahora que TikTok está desactivado
         connected,
         timestamp: new Date().toISOString()
       });
-
-      // La verificación para TikTok está comentada ya que ese flujo se ha desactivado
-      /* if (!eventBus.isEventEnabled('tiktokChatMessage')) {
-        console.log('[LOG-SIDEPANEL] Bloqueando mensaje de TikTok porque el evento está deshabilitado:', {
-          message,
-          timestamp: new Date().toISOString()
-        });
-        return;
-      } */
 
       if (connected) {
         setTextInput(message);
         
         const timeoutId = setTimeout(() => {
-          // La verificación para TikTok está comentada ya que ese flujo se ha desactivado
-          /* if (!eventBus.isEventEnabled('tiktokChatMessage')) {
-            console.log('[LOG-SIDEPANEL] Bloqueando envío de mensaje de TikTok porque el evento se deshabilitó durante el timeout:', {
-              message,
-              timestamp: new Date().toISOString()
-            });
-            setTextInput("");
-            return;
-          } */
-
           if (connected && message.trim()) {
             try {
               client.send([{ text: message }]);
@@ -169,25 +225,23 @@ export default function SidePanel() {
 
         return () => clearTimeout(timeoutId);
       } else {
-        // La verificación para TikTok está comentada ya que ese flujo se ha desactivado
-        /* if (eventBus.isEventEnabled('tiktokChatMessage')) {
-          setPendingMessages(prev => [...prev, message]);
-        } else {
-          console.log('[LOG-SIDEPANEL] No añadiendo mensaje a la cola porque el evento está deshabilitado:', {
-            message,
-            timestamp: new Date().toISOString()
-          });
-        } */
-        
-        // Siempre agregamos mensajes a la cola ahora que TikTok está desactivado
         setPendingMessages(prev => [...prev, message]);
       }
     };
 
+    // Función para limpiar mensajes pendientes de TikTok
+    const handleClearTikTokMessages = () => {
+      console.log('[LOG-TIKTOK] Limpiando mensajes pendientes de TikTok');
+      // Filtrar todos los mensajes que NO son de TikTok (mantener solo los de Spotify y otros)
+      setPendingMessages(prev => prev.filter(msg => !msg.startsWith('[TikTok]')));
+    };
+
     eventBus.on('approvedChatMessage', handleApprovedMessage);
+    eventBus.on('clearTikTokPendingMessages', handleClearTikTokMessages);
     
     return () => {
       eventBus.off('approvedChatMessage', handleApprovedMessage);
+      eventBus.off('clearTikTokPendingMessages', handleClearTikTokMessages);
     };
   }, [connected, client, pendingMessages]);
 
@@ -196,6 +250,18 @@ export default function SidePanel() {
     if (connected && pendingMessages.length > 0) {
       const processNextMessage = () => {
         const message = pendingMessages[0];
+        
+        // Verificación adicional: si es un mensaje de TikTok, verificar si el evento está habilitado
+        if (message.startsWith('[TikTok]') && !eventBus.isEventEnabled('tiktokChatMessage')) {
+          console.log('[LOG-TIKTOK] Saltando mensaje pendiente porque el evento está deshabilitado:', {
+            message,
+            timestamp: new Date().toISOString()
+          });
+          // Eliminar el mensaje de la cola sin procesarlo
+          setPendingMessages(prev => prev.slice(1));
+          return;
+        }
+        
         autoSubmitMessage(message);
         setPendingMessages(prev => prev.slice(1));
       };

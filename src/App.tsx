@@ -25,6 +25,7 @@ import cn from "classnames";
 import { AssistantSpeakingHandler } from "./lib/events/AssistantSpeakingHandler";
 import { EventDisplayHandler } from "./lib/events/EventDisplayHandler";
 import { SpotifyService } from "./lib/spotify/spotifyService";
+import { TikTokService } from "./lib/tiktok/tiktokService";
 import "./lib/events/eventDispatcher"; // Importar para inicializar los listeners
 
 const API_KEY = process.env.REACT_APP_GEMINI_API_KEY as string;
@@ -41,6 +42,14 @@ function App() {
 
   // Inicializar servicios
   const spotifyServiceInstance = SpotifyService.getInstance();
+  const tiktokServiceInstance = TikTokService.getInstance();
+  
+  // Log para verificar inicialización
+  console.log('[App] Servicios inicializados:', {
+    spotify: spotifyServiceInstance !== null,
+    tiktok: tiktokServiceInstance !== null,
+    timestamp: new Date().toISOString()
+  });
 
   return (
     <div className="App">

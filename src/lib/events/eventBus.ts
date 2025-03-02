@@ -44,9 +44,26 @@ class EventBus extends EventEmitter {
             }
         }
 
-        // Para el evento approvedChatMessage, verificar si proviene de Spotify
+        // Para el evento tiktokChatMessage, verificar si está activado
+        if (eventType === 'tiktokChatMessage') {
+            if (this.isEventEnabled(eventType)) {
+                console.log('[LOG] Emitiendo evento tiktokChatMessage:', {
+                    eventType,
+                    args: args[0],
+                    timestamp: new Date().toISOString()
+                });
+                return super.emit(eventType, ...args);
+            } else {
+                console.log('[LOG] Bloqueando evento tiktokChatMessage por estar desactivado');
+                return false;
+            }
+        }
+
+        // Para el evento approvedChatMessage, verificar su origen
         if (eventType === 'approvedChatMessage') {
             const message = args[0];
+            
+            // Verificar si proviene de Spotify
             if (typeof message === 'string' && message.startsWith('[Spotify]')) {
                 // Verificar si el evento de Spotify está activado
                 if (this.isEventEnabled('spotifySongPlayed')) {
@@ -58,6 +75,25 @@ class EventBus extends EventEmitter {
                     return super.emit(eventType, ...args);
                 } else {
                     console.log('[LOG] Bloqueando mensaje de Spotify por evento desactivado:', {
+                        message,
+                        timestamp: new Date().toISOString()
+                    });
+                    return false;
+                }
+            }
+            
+            // Verificar si proviene de TikTok
+            if (typeof message === 'string' && message.startsWith('[TikTok]')) {
+                // Verificar si el evento de TikTok está activado
+                if (this.isEventEnabled('tiktokChatMessage')) {
+                    console.log('[LOG] Emitiendo mensaje de TikTok al SidePanel:', {
+                        message,
+                        timestamp: new Date().toISOString()
+                    });
+                    // Emitir directamente el mensaje cuando el evento está activado
+                    return super.emit(eventType, ...args);
+                } else {
+                    console.log('[LOG] Bloqueando mensaje de TikTok por evento desactivado:', {
                         message,
                         timestamp: new Date().toISOString()
                     });

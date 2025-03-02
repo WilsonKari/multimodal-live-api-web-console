@@ -20,6 +20,27 @@ export const useEventStore = create<EventStoreState>((set, get) => ({
       eventType: 'spotifySongPlayed', 
       enabled: true, 
       filterParameters: {} 
+    },
+    { 
+      eventType: 'tiktokChatMessage', 
+      enabled: true, 
+      filterParameters: {
+        followerRole: {
+          noFollow: true,
+          follower: true,
+          friend: true
+        },
+        userStatus: {
+          moderator: true,
+          subscriber: true,
+          newDonor: true
+        },
+        donorRange: {
+          unrestricted: true,
+          min: 0,
+          max: 100
+        }
+      } 
     }
   ],
   isAssistantSpeaking: false,
