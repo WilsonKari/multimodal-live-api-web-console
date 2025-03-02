@@ -25,18 +25,8 @@ export class TikTokService {
         this.setupMessageHistoryCleanup();
         this.listenForStateChanges();
         
-        // Verificar estado inicial
-        const initialState = useEventStore.getState();
-        const eventEnabled = initialState.eventConfigs.find(
-            config => config.eventType === 'tiktokChatMessage'
-        )?.enabled || false;
-        
-        // Solo conectar si el evento está activado inicialmente
-        if (eventEnabled) {
-            this.reconnect();
-        } else {
-            console.log('[TikTokService] No conectando socket inicial porque el evento está desactivado');
-        }
+        // Conectar el socket independientemente del estado de los eventos
+        this.reconnect();
     }
 
     public static getInstance(): TikTokService {
@@ -53,7 +43,7 @@ export class TikTokService {
                 reconnectionAttempts: TIKTOK_SOCKET_CONFIG.RECONNECTION_ATTEMPTS,
                 reconnectionDelay: TIKTOK_SOCKET_CONFIG.RECONNECTION_DELAY,
                 timeout: 5000,
-                autoConnect: false
+                autoConnect: true // Cambiado a true para seguir el enfoque de Spotify
             });
 
             this.setupEventListeners();
@@ -71,15 +61,13 @@ export class TikTokService {
                     timestamp: new Date().toISOString()
                 });
                 
-                // Activar o desactivar la escucha de eventos del socket
+                // Actualizar el estado de escucha de eventos pero NO conectar/desconectar el socket
                 if (data.enabled) {
                     this.activateEventListeners();
-                    // Conectar el socket cuando el evento se activa
-                    this.reconnect();
                 } else {
                     this.deactivateEventListeners();
-                    // Desconectar el socket cuando el evento se desactiva
-                    this.disconnectSocket();
+                    // Limpiar mensajes pendientes pero no desconectar el socket
+                    this.clearPendingMessages();
                 }
             }
         });
@@ -99,34 +87,17 @@ export class TikTokService {
     }
     
     private activateEventListeners(): void {
-        if (this.eventListenersActive || !this.socket) return;
+        if (this.eventListenersActive) return;
         
-        console.log('[TikTokService] Activando escucha de eventos');
+        console.log('[TikTokService] Activando procesamiento de eventos');
         this.eventListenersActive = true;
-        
-        // Restaurar el listener de chat si existe
-        if (this.activeChatListener) {
-            this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.CHAT_MESSAGE, this.activeChatListener);
-        } else {
-            this.setupChatMessageListener();
-        }
     }
     
     private deactivateEventListeners(): void {
-        if (!this.eventListenersActive || !this.socket) return;
+        if (!this.eventListenersActive) return;
         
-        console.log('[TikTokService] Desactivando escucha de eventos');
+        console.log('[TikTokService] Desactivando procesamiento de eventos');
         this.eventListenersActive = false;
-        
-        // Guardar la referencia al listener actual antes de eliminarlo
-        if (!this.activeChatListener) {
-            this.socket.listeners(TIKTOK_SOCKET_CONFIG.EVENTS.CHAT_MESSAGE).forEach(listener => {
-                this.activeChatListener = listener;
-            });
-        }
-        
-        // Eliminar el listener de chat a nivel de socket
-        this.socket.off(TIKTOK_SOCKET_CONFIG.EVENTS.CHAT_MESSAGE);
         
         // Borrar cualquier mensaje pendiente que pudiera estar en la cola
         this.clearPendingMessages();
@@ -137,21 +108,6 @@ export class TikTokService {
         eventBus.emit('clearTikTokPendingMessages');
     }
     
-    // Método privado para desconectar el socket
-    private disconnectSocket(): void {
-        if (this.socket && this.socket.connected) {
-            console.log('[TikTokService] Desconectando socket debido a desactivación del evento');
-            this.socket.disconnect();
-            this.connected = false;
-            
-            // Detener cualquier intento pendiente de reconexión
-            if (this.reconnectionTimer) {
-                clearTimeout(this.reconnectionTimer);
-                this.reconnectionTimer = null;
-            }
-        }
-    }
-
     private setupMessageHistoryCleanup(): void {
         // Configurar limpieza periódica de historial para evitar consumo excesivo de memoria
         this.cleanupInterval = setInterval(() => {
@@ -210,8 +166,12 @@ export class TikTokService {
                 timestamp: new Date().toISOString()
             });
             
+            // Verificar el estado desde el store, similar a Spotify
+            const store = useEventStore.getState();
+            const tiktokConfig = store.eventConfigs.find(config => config.eventType === 'tiktokChatMessage');
+            
             // Solo procesar si el evento está habilitado
-            if (!eventBus.isEventEnabled('tiktokChatMessage')) {
+            if (!tiktokConfig?.enabled) {
                 console.log('[TikTok-Debug] Evento bloqueado porque tiktokChatMessage está desactivado');
                 return;
             }
@@ -280,14 +240,6 @@ export class TikTokService {
             // Enviar directamente al SidePanel mediante approvedChatMessage, similar a spotify
             const messageForAssistant = `[TikTok] ${chatData.nickname}: ${chatData.comment}`;
             
-            // Verificar el estado del evento nuevamente antes de emitir
-            const eventEnabled = eventBus.isEventEnabled('tiktokChatMessage');
-            console.log('[TikTok-Debug] Verificación de estado antes de emitir:', {
-                eventType: 'tiktokChatMessage',
-                enabled: eventEnabled,
-                timestamp: new Date().toISOString()
-            });
-            
             // Emitimos tanto el evento tiktokChatMessage para los manejadores específicos
             // como approvedChatMessage para la integración directa con SidePanel
             try {
@@ -306,11 +258,11 @@ export class TikTokService {
             }
         };
         
-        // Guardar referencia al handler para poder restaurarlo más tarde
-        this.activeChatListener = chatMessageHandler;
-        
-        // Registrar el handler en el socket
+        // Siempre registramos el listener, independientemente del estado del evento
         this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.CHAT_MESSAGE, chatMessageHandler);
+        
+        // Guardar referencia al handler para uso futuro si es necesario
+        this.activeChatListener = chatMessageHandler;
         
         console.log('[TikTok-Setup] Listener de chat configurado correctamente');
     }
@@ -328,6 +280,8 @@ export class TikTokService {
         this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.DISCONNECT, (reason) => {
             console.log(`❌ Desconectado del servidor de TikTok: ${reason}`);
             this.connected = false;
+            
+            // Siempre intentar reconectar, independientemente de los estados de los eventos
             this.reconnect();
         });
         
@@ -342,12 +296,10 @@ export class TikTokService {
             this.connected = false;
         });
 
-        // Configurar el listener de chat solo si los eventos están activos
-        if (this.eventListenersActive) {
-            this.setupChatMessageListener();
-        }
+        // Configurar los listeners para todos los eventos disponibles
+        this.setupChatMessageListener();
 
-        // Setup empty handlers for other events
+        // Setup other event handlers - Estos pueden implementarse en el futuro
         this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.EMOTE, () => {});
         this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.GIFT, () => {});
         this.socket.on(TIKTOK_SOCKET_CONFIG.EVENTS.ENVELOPE, () => {});
@@ -441,11 +393,15 @@ export class TikTokService {
             timestamp: new Date().toISOString()
         });
         
+        // Verificar estado desde el store
+        const store = useEventStore.getState();
+        const tiktokConfig = store.eventConfigs.find(config => config.eventType === 'tiktokChatMessage');
+        
         // Verificar si los listeners están activos y si el evento está habilitado
-        if (!this.eventListenersActive || !eventBus.isEventEnabled('tiktokChatMessage')) {
+        if (!this.eventListenersActive || !tiktokConfig?.enabled) {
             console.log('[TikTok-Test] No se puede simular mensaje porque el evento o los listeners están desactivados:', {
                 eventListenersActive: this.eventListenersActive,
-                eventEnabled: eventBus.isEventEnabled('tiktokChatMessage'),
+                eventEnabled: tiktokConfig?.enabled,
                 timestamp: new Date().toISOString()
             });
             return;
@@ -493,7 +449,7 @@ export class TikTokService {
             const messageForAssistant = `[TikTok] ${nickname}: ${comment}`;
             
             console.log('[TikTok-Test] Emitiendo eventos directamente:', {
-                eventEnabled: eventBus.isEventEnabled('tiktokChatMessage'),
+                eventEnabled: tiktokConfig?.enabled,
                 timestamp: new Date().toISOString()
             });
             

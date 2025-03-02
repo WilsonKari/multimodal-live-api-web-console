@@ -65,7 +65,7 @@ const EventCard: React.FC<EventCardProps> = ({
         
         // Si se está activando, enviar un mensaje de prueba
         if (newState) {
-          // Esperar más tiempo para que el socket se conecte adecuadamente
+          // Esperar un momento para que el estado se actualice completamente
           setTimeout(() => {
             try {
               const tikTokService = TikTokService.getInstance();
@@ -76,22 +76,22 @@ const EventCard: React.FC<EventCardProps> = ({
                 timestamp: new Date().toISOString()
               });
               
-              // Simular un mensaje después de más tiempo para dar tiempo a que se conecte el socket
+              // En el nuevo enfoque el socket siempre debería estar conectado
+              // Solo necesitamos verificar que el evento esté activado
               setTimeout(() => {
-                if (eventBus.isEventEnabled('tiktokChatMessage') && tikTokService.isConnected()) {
+                if (eventBus.isEventEnabled('tiktokChatMessage')) {
                   console.log('[TikTok-EventCard] Enviando mensaje de prueba...');
                   tikTokService.simulateChatMessage('TestUser', 'Este es un mensaje de prueba desde la activación del evento');
                 } else {
-                  console.log('[TikTok-EventCard] No se pudo enviar mensaje de prueba, el evento sigue desactivado o el socket no está conectado:', {
-                    eventEnabled: eventBus.isEventEnabled('tiktokChatMessage'),
-                    socketConnected: tikTokService.isConnected()
+                  console.log('[TikTok-EventCard] No se pudo enviar mensaje de prueba, el evento sigue desactivado:', {
+                    eventEnabled: eventBus.isEventEnabled('tiktokChatMessage')
                   });
                 }
-              }, 2000); // Esperar 2 segundos para que el socket se conecte
+              }, 500); // Esperar medio segundo es suficiente en el nuevo enfoque
             } catch (err) {
               console.error('[TikTok-EventCard] Error al intentar simular mensaje:', err);
             }
-          }, 1000); // Esperar 1 segundo para que se estabilice el estado
+          }, 500);
         }
       }, 100);
     }
