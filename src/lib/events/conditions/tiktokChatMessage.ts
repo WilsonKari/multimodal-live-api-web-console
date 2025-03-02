@@ -1,3 +1,7 @@
+// Este archivo está relacionado con el flujo de TikTok que ha sido desactivado
+// Mantener este archivo comentado para referencia futura pero sin causar errores de compilación
+
+/*
 import { TiktokChatMessageEvent } from '../eventTypes';
 import { ChatFilterConfig, ChatFilterRules } from '../types/chatConfig';
 
@@ -84,5 +88,14 @@ export function passesFilter(event: TiktokChatMessageEvent, config: ChatFilterCo
     return false;
   }
 
+  return true;
+}
+*/
+
+// Exportar versiones simplificadas de las funciones para evitar errores cuando se importen en otros lugares
+export const tiktokChatMessageSchema = {};
+
+export function passesFilter(): boolean {
+  // Esta función está desactivada porque el flujo de TikTok ha sido comentado
   return true;
 }

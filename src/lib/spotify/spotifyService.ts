@@ -10,10 +10,14 @@ export class SpotifyService {
     private lastTrackInfo: string | null = null;
     private lastUpdateTime: number = 0;
     private readonly DEBOUNCE_TIME = 2000; // 2 segundos entre actualizaciones
+    private processedTracks: Set<string> = new Set(); // Conjunto para registrar tracks procesados
+    private cleanupInterval: NodeJS.Timeout | null = null;
+    private readonly TRACK_HISTORY_EXPIRY = 300000; // 5 minutos para olvidar tracks procesados
+    private readonly MAX_HISTORY_SIZE = 100; // Máximo número de tracks a mantener en historial
 
     private constructor() {
         this.initializeSocket();
-        // No llamamos a reconnect() aquí porque initializeSocket ya lo hace
+        this.setupTrackHistoryCleanup();
     }
 
     public static getInstance(): SpotifyService {
@@ -65,17 +69,36 @@ export class SpotifyService {
             this.connected = false;
         });
 
-        // Evento de canción reproducida - Con control de duplicados
+        // Evento de canción reproducida - Con control de duplicados mejorado
         this.socket.on(SPOTIFY_SOCKET_CONFIG.EVENTS.SONG_PLAYED, (trackInfo) => {
             const currentTime = Date.now();
             const trackId = `${trackInfo?.name}-${trackInfo?.artists?.join(',')}`;
-
-            // Verificar si es el mismo track y si no ha pasado suficiente tiempo
+            const trackIdWithTimestamp = `${trackId}|${currentTime}`;
+            
+            // Sistema mejorado anti-duplicados con múltiples verificaciones:
+            
+            // 1. Verificar si es el mismo track recibido recientemente (debounce)
             if (this.lastTrackInfo === trackId && 
                 currentTime - this.lastUpdateTime < this.DEBOUNCE_TIME) {
-                console.log('[Spotify-Debug] Evento duplicado ignorado:', {
+                console.log('[Spotify-Debug] Evento duplicado ignorado (debounce):', {
                     trackId,
                     timeSinceLastUpdate: currentTime - this.lastUpdateTime,
+                    timestamp: new Date().toISOString()
+                });
+                return;
+            }
+            
+            // 2. Verificar en el registro histórico si ya hemos procesado este track recientemente
+            const recentDuplicate = Array.from(this.processedTracks).some(item => {
+                const [storedTrackId, timestampStr] = item.split('|');
+                const timestamp = parseInt(timestampStr);
+                // Considerar duplicado si es el mismo track y no han pasado más de 30 segundos
+                return storedTrackId === trackId && currentTime - timestamp < 30000;
+            });
+            
+            if (recentDuplicate) {
+                console.log('[Spotify-Debug] Evento duplicado ignorado (historial):', {
+                    trackId,
                     timestamp: new Date().toISOString()
                 });
                 return;
@@ -86,9 +109,9 @@ export class SpotifyService {
             const spotifyConfig = store.eventConfigs.find(config => config.eventType === 'spotifySongPlayed');
 
             if (spotifyConfig?.enabled) {
-                const messageForAssistant = `[Spotify] Reproduciendo: "${trackInfo?.name}" por ${trackInfo?.artists?.join(', ')}`;
-                console.log('[Spotify-Debug] Emitiendo nuevo evento:', {
-                    messageForAssistant,
+                console.log('[Spotify-Debug] Procesando nuevo evento de Spotify:', {
+                    trackName: trackInfo?.name,
+                    artistName: trackInfo?.artists?.join(', '),
                     trackId,
                     timestamp: new Date().toISOString()
                 });
@@ -96,15 +119,78 @@ export class SpotifyService {
                 // Actualizar control de duplicados
                 this.lastTrackInfo = trackId;
                 this.lastUpdateTime = currentTime;
+                this.processedTracks.add(trackIdWithTimestamp);
                 
-                // Emitir al canal de mensajes aprobados
+                // Enviar directamente al SidePanel mediante approvedChatMessage
+                // Para asegurar que no pase por la cola y llegue inmediatamente
+                const messageForAssistant = `[Spotify] Reproduciendo: "${trackInfo?.name}" por ${trackInfo?.artists?.join(', ')}`;
+                
+                // Solo emitimos el mensaje directamente para que llegue al SidePanel
+                // Evitamos emitir spotifySongPlayed para prevenir duplicación
                 eventBus.emit('approvedChatMessage', messageForAssistant);
+                
+                console.log('[Spotify-Debug] Mensaje enviado directamente a SidePanel:', {
+                    message: messageForAssistant,
+                    timestamp: new Date().toISOString()
+                });
+            } else {
+                console.log('[Spotify-Debug] Evento ignorado porque spotifySongPlayed está desactivado');
             }
         });
     }
 
+    private setupTrackHistoryCleanup(): void {
+        // Configurar limpieza periódica de historial para evitar consumo excesivo de memoria
+        this.cleanupInterval = setInterval(() => {
+            // Limpiar tracks antiguos para prevenir crecimiento ilimitado de memoria
+            const now = Date.now();
+            const tracksToRemove: string[] = [];
+            
+            // Identificar tracks antiguos para eliminar
+            this.processedTracks.forEach(trackIdWithTimestamp => {
+                const [, timestamp] = trackIdWithTimestamp.split('|');
+                if (now - parseInt(timestamp) > this.TRACK_HISTORY_EXPIRY) {
+                    tracksToRemove.push(trackIdWithTimestamp);
+                }
+            });
+            
+            // Eliminar tracks antiguos
+            tracksToRemove.forEach(track => {
+                this.processedTracks.delete(track);
+            });
+            
+            console.log('[Spotify-Debug] Limpieza de historial de tracks:', {
+                removedTracks: tracksToRemove.length,
+                remainingTracks: this.processedTracks.size,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Si aún queda un número excesivo de tracks, eliminar los más antiguos
+            if (this.processedTracks.size > this.MAX_HISTORY_SIZE) {
+                const trackArray = Array.from(this.processedTracks);
+                trackArray.sort((a, b) => {
+                    const timestampA = parseInt(a.split('|')[1]);
+                    const timestampB = parseInt(b.split('|')[1]);
+                    return timestampA - timestampB;
+                });
+                
+                const tracksToKeep = trackArray.slice(-this.MAX_HISTORY_SIZE);
+                this.processedTracks = new Set(tracksToKeep);
+                
+                console.log('[Spotify-Debug] Limpieza adicional por tamaño máximo:', {
+                    newSize: this.processedTracks.size,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }, 60000); // Ejecutar cada minuto
+    }
+
     // Métodos públicos para interactuar con el socket
     public disconnect(): void {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+            this.cleanupInterval = null;
+        }
         this.socket?.disconnect();
     }
 

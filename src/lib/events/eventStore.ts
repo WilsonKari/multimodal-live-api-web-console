@@ -1,30 +1,10 @@
 import { create } from 'zustand';
-import { ChatFilterConfig } from './types/chatConfig';
 import eventBus from './eventBus';
-
-// Configuración por defecto para el chat
-const defaultChatConfig: ChatFilterConfig = {
-  followerRole: {
-    noFollow: true,
-    follower: true,
-    friend: true
-  },
-  userStatus: {
-    moderator: true,
-    subscriber: true,
-    newDonor: true
-  },
-  donorRange: {
-    unrestricted: true,
-    min: 0,
-    max: 100
-  }
-};
 
 interface EventConfig {
   eventType: string;
   enabled: boolean;
-  filterParameters: ChatFilterConfig | Record<string, any>;
+  filterParameters: Record<string, any>;
 }
 
 interface EventStoreState {
@@ -34,21 +14,8 @@ interface EventStoreState {
   setIsAssistantSpeaking: (speaking: boolean) => void;
 }
 
-// Type guard para verificar si es configuración de chat
-function isChatConfig(config: any): config is ChatFilterConfig {
-  return config && 
-         'followerRole' in config && 
-         'userStatus' in config && 
-         'donorRange' in config;
-}
-
 export const useEventStore = create<EventStoreState>((set, get) => ({
   eventConfigs: [
-    { 
-      eventType: 'tiktokChatMessage', 
-      enabled: true, 
-      filterParameters: defaultChatConfig 
-    },
     { 
       eventType: 'spotifySongPlayed', 
       enabled: true, 
@@ -68,17 +35,13 @@ export const useEventStore = create<EventStoreState>((set, get) => ({
               eventType,
               enabled: config.enabled
             });
-          }
-          
-          // Si son filtros de chat, manejarlos específicamente
-          if (config.filterParameters && eventType === 'tiktokChatMessage') {
-            return {
-              ...newConfig,
-              filterParameters: {
-                ...eventConfig.filterParameters,
-                ...(isChatConfig(config.filterParameters) ? config.filterParameters : {})
-              }
-            };
+
+            console.log('[EventStore] Estado del evento actualizado:', {
+              eventType,
+              prevEnabled: eventConfig.enabled,
+              newEnabled: config.enabled,
+              timestamp: new Date().toISOString()
+            });
           }
           
           return newConfig;

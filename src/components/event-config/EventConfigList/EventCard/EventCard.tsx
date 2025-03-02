@@ -2,9 +2,39 @@ import React from 'react';
 import { IoSettingsOutline } from 'react-icons/io5';
 import { BsCircleFill } from 'react-icons/bs';
 import './EventCard.scss';
-import { ChatFilterConfig } from '../../../../lib/events/types/chatConfig';
+// Comentada la importación del tipo ChatFilterConfig
+// import { ChatFilterConfig } from '../../../../lib/events/types/chatConfig';
+
+// Definir tipo ChatFilterConfig localmente para evitar dependencias
+interface ChatFilterConfig {
+  followerRole: {
+    noFollow: boolean;
+    follower: boolean;
+    friend: boolean;
+  };
+  userStatus: {
+    moderator: boolean;
+    subscriber: boolean;
+    newDonor: boolean;
+  };
+  donorRange: {
+    unrestricted: boolean;
+    min: number;
+    max: number;
+  };
+}
 
 type EventCardProps = {
+  eventType: string;
+  enabled: boolean;
+  onToggle: () => void;
+  onConfigure: () => void;
+  onConfigChange: (config: Record<string, any>) => void;
+  filterParameters: Record<string, any>;
+};
+
+// Comentado el tipo unión para TikTok
+/* type EventCardProps = {
   eventType: string;
   enabled: boolean;
   onToggle: () => void;
@@ -20,7 +50,7 @@ type EventCardProps = {
       onConfigChange: (config: Record<string, any>) => void;
       filterParameters: Record<string, any>;
     }
-);
+); */
 
 const EventCard: React.FC<EventCardProps> = ({
   eventType,

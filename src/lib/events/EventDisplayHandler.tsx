@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useEventStore } from './eventStore';
 import { eventQueue } from './eventQueue';
-import { EventType, TiktokChatMessageEvent, SpotifySongPlayedEvent } from './eventTypes';
+import { EventType, SpotifySongPlayedEvent } from './eventTypes';
+import eventBus from './eventBus';
 
 export const EventDisplayHandler: React.FC = () => {
   const { isAssistantSpeaking } = useEventStore();
@@ -11,12 +12,14 @@ export const EventDisplayHandler: React.FC = () => {
     averageWaitTime: 0
   });
 
+  // Procesar eventos en cola cuando el asistente no está hablando
   useEffect(() => {
     if (!isAssistantSpeaking) {
       processQueuedEvents();
     }
   }, [isAssistantSpeaking]);
 
+  // Actualizar estadísticas de la cola
   useEffect(() => {
     const interval = setInterval(() => {
       const stats = eventQueue.getStats();
@@ -38,23 +41,32 @@ export const EventDisplayHandler: React.FC = () => {
   const processEvent = (event: EventType) => {
     try {
       switch (event.eventType) {
-        case 'tiktokChatMessage': {
-          const chatEvent = event as TiktokChatMessageEvent;
-          break;
-        }
         case 'spotifySongPlayed': {
           const songEvent = event as SpotifySongPlayedEvent;
+          console.log('[EventDisplay] Evento de Spotify en cola detectado:', {
+            track: songEvent.trackName,
+            artist: songEvent.artistName,
+            timestamp: new Date().toISOString()
+          });
+          
+          // Ya no emitimos approvedChatMessage desde aquí porque:
+          // 1. Los eventos de Spotify ahora se envían directamente al SidePanel desde spotifyService
+          // 2. Esto evita potenciales duplicados por múltiples rutas de procesamiento
+          console.log('[EventDisplay] Ignorando evento de Spotify en cola para evitar duplicados');
+          
           break;
         }
         default: {
-          const _exhaustiveCheck: never = event;
+          console.log('[EventDisplay] Tipo de evento no manejado:', event.eventType);
+          break;
         }
       }
     } catch (error) {
-      console.error('Error al procesar evento:', error);
+      console.error('[EventDisplay] Error al procesar evento:', error);
     }
   };
 
+  // El componente no renderiza nada visible, pero procesa eventos en segundo plano
   return (
     <div style={{ display: 'none' }}>
       <div>Cola de eventos: {queueStats.totalEvents}</div>

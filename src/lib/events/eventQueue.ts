@@ -13,19 +13,11 @@ export const eventQueue = {
     const queuedEvent: QueuedEvent = {
       event,
       timestamp: Date.now(),
-      priority: event.eventType === 'tiktokChatMessage' ? 1 : 2
+      priority: 1  // Todos los eventos tienen la misma prioridad
     };
 
-    const insertIndex = queue.findIndex(
-      e => e.priority > queuedEvent.priority || 
-          (e.priority === queuedEvent.priority && e.timestamp > queuedEvent.timestamp)
-    );
-
-    if (insertIndex === -1) {
-      queue.push(queuedEvent);
-    } else {
-      queue.splice(insertIndex, 0, queuedEvent);
-    }
+    // Agregar evento a la cola en orden cronológico
+    queue.push(queuedEvent);
   },
 
   getEvents: () => {

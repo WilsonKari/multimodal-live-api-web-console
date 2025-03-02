@@ -3,19 +3,12 @@ import { useEventStore } from './eventStore';
 
 class EventBus extends EventEmitter {
     isEventEnabled(eventType: string): boolean {
-        // Para eventos de Spotify, solo verificamos en el store sin logs adicionales
-        if (eventType === 'spotifySongPlayed') {
-            const store = useEventStore.getState();
-            const config = store.eventConfigs.find(config => config.eventType === eventType);
-            return config?.enabled || false;
-        }
-
-        // Para otros eventos, mantenemos la lógica y logs existentes
+        // Verificamos en el store si el evento está habilitado
         const store = useEventStore.getState();
         const config = store.eventConfigs.find(config => config.eventType === eventType);
         const enabled = config?.enabled || false;
         
-        console.log('[LOG-4] Verificación de estado en eventBus:', {
+        console.log('[LOG] Verificación de estado en eventBus:', {
             eventType,
             enabled,
             config,
@@ -26,31 +19,56 @@ class EventBus extends EventEmitter {
     }
 
     emit(eventType: string, ...args: any[]): boolean {
-        // Verificación especial para el evento approvedChatMessage si proviene de TikTok
+        // Si es un evento de cambio de estado, no aplicar verificación adicional
+        if (eventType === 'eventStateChanged') {
+            console.log('[LOG] Emitiendo evento de cambio de estado:', {
+                eventType,
+                args: args[0],
+                timestamp: new Date().toISOString()
+            });
+            return super.emit(eventType, ...args);
+        }
+
+        // Para el evento spotifySongPlayed, verificar si está activado
+        if (eventType === 'spotifySongPlayed') {
+            if (this.isEventEnabled(eventType)) {
+                console.log('[LOG] Emitiendo evento spotifySongPlayed:', {
+                    eventType,
+                    args: args[0],
+                    timestamp: new Date().toISOString()
+                });
+                return super.emit(eventType, ...args);
+            } else {
+                console.log('[LOG] Bloqueando evento spotifySongPlayed por estar desactivado');
+                return false;
+            }
+        }
+
+        // Para el evento approvedChatMessage, verificar si proviene de Spotify
         if (eventType === 'approvedChatMessage') {
-            // Si el mensaje es de TikTok (comienza con "[" pero no con "[Spotify]")
-            const message = args[0] as string;
-            if (message && message.startsWith('[') && !message.startsWith('[Spotify]')) {
-                // Verificar si el evento de TikTok está habilitado
-                if (!this.isEventEnabled('tiktokChatMessage')) {
-                    console.log('[EventBus] Bloqueando approvedChatMessage de TikTok porque el evento está deshabilitado:', {
+            const message = args[0];
+            if (typeof message === 'string' && message.startsWith('[Spotify]')) {
+                // Verificar si el evento de Spotify está activado
+                if (this.isEventEnabled('spotifySongPlayed')) {
+                    console.log('[LOG] Emitiendo mensaje de Spotify al SidePanel:', {
+                        message,
+                        timestamp: new Date().toISOString()
+                    });
+                    // Emitir directamente el mensaje cuando el evento está activado
+                    return super.emit(eventType, ...args);
+                } else {
+                    console.log('[LOG] Bloqueando mensaje de Spotify por evento desactivado:', {
                         message,
                         timestamp: new Date().toISOString()
                     });
                     return false;
                 }
             }
-            return super.emit(eventType, ...args);
-        }
-        
-        // Si es un evento de Spotify o de cambio de estado, no aplicar verificación adicional
-        if (eventType === 'spotifySongPlayed' || eventType === 'eventStateChanged') {
-            return super.emit(eventType, ...args);
         }
 
         // Para otros eventos, mantener la verificación y logs
         if (!this.isEventEnabled(eventType)) {
-            console.log('[LOG-7] Evento bloqueado por eventBus:', {
+            console.log('[LOG] Evento bloqueado por eventBus:', {
                 eventType,
                 timestamp: new Date().toISOString()
             });
@@ -62,4 +80,4 @@ class EventBus extends EventEmitter {
 
 const eventBus = new EventBus();
 
-export default eventBus;
+export default eventBus; 

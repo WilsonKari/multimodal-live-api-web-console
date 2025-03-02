@@ -2,7 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { IoClose } from 'react-icons/io5';
 import './EventConfigModal.scss';
 
-import { ChatFilterConfig } from '../../../../../lib/events/types/chatConfig';
+// Comentada la importación del tipo ChatFilterConfig ya que está relacionada con TikTok
+// import { ChatFilterConfig } from '../../../../../lib/events/types/chatConfig';
+
+// Definir tipo ChatFilterConfig localmente para evitar dependencias
+interface ChatFilterConfig {
+  followerRole: {
+    noFollow: boolean;
+    follower: boolean;
+    friend: boolean;
+  };
+  userStatus: {
+    moderator: boolean;
+    subscriber: boolean;
+    newDonor: boolean;
+  };
+  donorRange: {
+    unrestricted: boolean;
+    min: number;
+    max: number;
+  };
+}
 
 interface EventConfigModalProps {
   isOpen: boolean;
@@ -145,99 +165,114 @@ export const EventConfigModal: React.FC<EventConfigModalProps> = ({
 
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
-            <div className="filter-section">
-              <h3>Rol de Seguidor</h3>
-              <div className="filter-buttons">
-                <button 
-                  type="button"
-                  className={`filter-btn ${filters.followerRole.noFollow ? 'selected' : 'inactive'}`}
-                  onClick={() => toggleFollowerRole('noFollow')}
-                >
-                  No Sigue
-                </button>
-                <button 
-                  type="button"
-                  className={`filter-btn ${filters.followerRole.follower ? 'selected' : 'inactive'}`}
-                  onClick={() => toggleFollowerRole('follower')}
-                >
-                  Seguidor
-                </button>
-                <button 
-                  type="button"
-                  className={`filter-btn ${filters.followerRole.friend ? 'selected' : 'inactive'}`}
-                  onClick={() => toggleFollowerRole('friend')}
-                >
-                  Amigo
-                </button>
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <h3>Estado del Usuario</h3>
-              <div className="filter-buttons">
-                <button 
-                  type="button"
-                  className={`filter-btn ${filters.userStatus.moderator ? 'selected' : 'inactive'}`}
-                  onClick={() => toggleUserStatus('moderator')}
-                >
-                  Moderador
-                </button>
-                <button 
-                  type="button"
-                  className={`filter-btn ${filters.userStatus.subscriber ? 'selected' : 'inactive'}`}
-                  onClick={() => toggleUserStatus('subscriber')}
-                >
-                  Suscriptor
-                </button>
-                <button 
-                  type="button"
-                  className={`filter-btn ${filters.userStatus.newDonor ? 'selected' : 'inactive'}`}
-                  onClick={() => toggleUserStatus('newDonor')}
-                >
-                  Nuevo Donante
-                </button>
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <h3>Rango Mínimo de Donante</h3>
-              <div className="range-control">
-                <button 
-                  type="button"
-                  className={`filter-btn ${filters.donorRange.unrestricted ? 'selected' : ''}`}
-                  onClick={toggleUnrestricted}
-                >
-                  Sin restricción
-                </button>
-                {!filters.donorRange.unrestricted && (
-                  <div className="range-slider">
-                    <input 
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={filters.donorRange.min}
-                      onChange={(e) => handleDonorRangeChange(parseInt(e.target.value), filters.donorRange.max)}
-                    />
-                    <input 
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={filters.donorRange.max}
-                      onChange={(e) => handleDonorRangeChange(filters.donorRange.min, parseInt(e.target.value))}
-                    />
-                    <div className="range-values">
-                      <span>{filters.donorRange.min}</span>
-                      <span>{filters.donorRange.max}</span>
-                    </div>
+            {/* 
+              Estos controles son específicos para la configuración de TikTok,
+              pero los mantenemos comentados para futuras referencias
+            */}
+            {eventType !== 'spotifySongPlayed' && (
+              <>
+                <div className="filter-section">
+                  <h3>Rol de Seguidor</h3>
+                  <div className="filter-buttons">
+                    <button 
+                      type="button"
+                      className={`filter-btn ${filters.followerRole.noFollow ? 'selected' : 'inactive'}`}
+                      onClick={() => toggleFollowerRole('noFollow')}
+                    >
+                      No Sigue
+                    </button>
+                    <button 
+                      type="button"
+                      className={`filter-btn ${filters.followerRole.follower ? 'selected' : 'inactive'}`}
+                      onClick={() => toggleFollowerRole('follower')}
+                    >
+                      Seguidor
+                    </button>
+                    <button 
+                      type="button"
+                      className={`filter-btn ${filters.followerRole.friend ? 'selected' : 'inactive'}`}
+                      onClick={() => toggleFollowerRole('friend')}
+                    >
+                      Amigo
+                    </button>
                   </div>
-                )}
+                </div>
+
+                <div className="filter-section">
+                  <h3>Estado del Usuario</h3>
+                  <div className="filter-buttons">
+                    <button 
+                      type="button"
+                      className={`filter-btn ${filters.userStatus.moderator ? 'selected' : 'inactive'}`}
+                      onClick={() => toggleUserStatus('moderator')}
+                    >
+                      Moderador
+                    </button>
+                    <button 
+                      type="button"
+                      className={`filter-btn ${filters.userStatus.subscriber ? 'selected' : 'inactive'}`}
+                      onClick={() => toggleUserStatus('subscriber')}
+                    >
+                      Suscriptor
+                    </button>
+                    <button 
+                      type="button"
+                      className={`filter-btn ${filters.userStatus.newDonor ? 'selected' : 'inactive'}`}
+                      onClick={() => toggleUserStatus('newDonor')}
+                    >
+                      Nuevo Donante
+                    </button>
+                  </div>
+                </div>
+
+                <div className="filter-section">
+                  <h3>Rango Mínimo de Donante</h3>
+                  <div className="range-control">
+                    <button 
+                      type="button"
+                      className={`filter-btn ${filters.donorRange.unrestricted ? 'selected' : ''}`}
+                      onClick={toggleUnrestricted}
+                    >
+                      Sin restricción
+                    </button>
+                    {!filters.donorRange.unrestricted && (
+                      <div className="range-slider">
+                        <input 
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={filters.donorRange.min}
+                          onChange={(e) => handleDonorRangeChange(parseInt(e.target.value), filters.donorRange.max)}
+                        />
+                        <input 
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={filters.donorRange.max}
+                          onChange={(e) => handleDonorRangeChange(filters.donorRange.min, parseInt(e.target.value))}
+                        />
+                        <div className="range-values">
+                          <span>{filters.donorRange.min}</span>
+                          <span>{filters.donorRange.max}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {eventType === 'spotifySongPlayed' && (
+              <div className="filter-section spotify-section">
+                <h3>Configuración de Spotify</h3>
+                <p>No hay opciones de configuración disponibles para este evento.</p>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="modal-footer">
             <div className="left-buttons">
-              <button type="button" className="reset" onClick={handleReset}>
+              <button type="button" className="reset" onClick={handleReset} disabled={eventType === 'spotifySongPlayed'}>
                 Reset
               </button>
             </div>
@@ -252,8 +287,8 @@ export const EventConfigModal: React.FC<EventConfigModalProps> = ({
               </button>
               <button 
                 type="submit" 
-                className={`save ${isSaving ? 'saving' : ''}`}
-                disabled={isSaving}
+                className="save" 
+                disabled={isSaving || eventType === 'spotifySongPlayed'}
               >
                 {isSaving ? 'Guardando...' : 'Guardar'}
               </button>

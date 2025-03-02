@@ -66,9 +66,29 @@ export default function SidePanel() {
 
   // Escuchar mensajes aprobados
   useEffect(() => {
+    // Set para rastrear mensajes recientes y evitar duplicados
+    const recentMessages = new Set<string>();
+    const RECENT_MESSAGE_EXPIRY = 10000; // 10 segundos para el seguimiento
+
     const handleApprovedMessage = (message: string) => {
-      // Si es un mensaje de Spotify, procesarlo directamente sin verificaciones adicionales
+      // Si es un mensaje de Spotify, procesarlo con lógica anti-duplicados
       if (message.startsWith('[Spotify]')) {
+        // Verificar si el mensaje es un duplicado reciente
+        if (recentMessages.has(message)) {
+          console.log('[LOG-SPOTIFY] Mensaje duplicado descartado:', {
+            message,
+            timestamp: new Date().toISOString()
+          });
+          return;
+        }
+
+        // Registrar mensaje como reciente
+        recentMessages.add(message);
+        // Configurar eliminación automática después de un tiempo
+        setTimeout(() => {
+          recentMessages.delete(message);
+        }, RECENT_MESSAGE_EXPIRY);
+
         console.log('[LOG-SPOTIFY] Mensaje entrando al cuadro de texto:', {
           message,
           connected,
@@ -105,33 +125,35 @@ export default function SidePanel() {
       // Para mensajes que no son de Spotify (son de TikTok), verificar de forma muy estricta
       console.log('[LOG-9] Mensaje a punto de ser procesado:', {
         message,
-        eventEnabled: eventBus.isEventEnabled('tiktokChatMessage'),
+        // La verificación de eventos de TikTok está comentada ya que ese flujo se ha desactivado
+        // eventEnabled: eventBus.isEventEnabled('tiktokChatMessage'),
+        eventEnabled: true, // Siempre permitimos mensajes ahora que TikTok está desactivado
         connected,
         timestamp: new Date().toISOString()
       });
 
-      // Verificación estricta: si el evento TikTok está deshabilitado, no procesar el mensaje
-      if (!eventBus.isEventEnabled('tiktokChatMessage')) {
+      // La verificación para TikTok está comentada ya que ese flujo se ha desactivado
+      /* if (!eventBus.isEventEnabled('tiktokChatMessage')) {
         console.log('[LOG-SIDEPANEL] Bloqueando mensaje de TikTok porque el evento está deshabilitado:', {
           message,
           timestamp: new Date().toISOString()
         });
         return;
-      }
+      } */
 
       if (connected) {
         setTextInput(message);
         
         const timeoutId = setTimeout(() => {
-          // Verificar nuevamente antes de enviar, por si cambió el estado
-          if (!eventBus.isEventEnabled('tiktokChatMessage')) {
+          // La verificación para TikTok está comentada ya que ese flujo se ha desactivado
+          /* if (!eventBus.isEventEnabled('tiktokChatMessage')) {
             console.log('[LOG-SIDEPANEL] Bloqueando envío de mensaje de TikTok porque el evento se deshabilitó durante el timeout:', {
               message,
               timestamp: new Date().toISOString()
             });
             setTextInput("");
             return;
-          }
+          } */
 
           if (connected && message.trim()) {
             try {
@@ -147,15 +169,18 @@ export default function SidePanel() {
 
         return () => clearTimeout(timeoutId);
       } else {
-        // Verificar si debemos agregar mensajes a la cola cuando no estamos conectados
-        if (eventBus.isEventEnabled('tiktokChatMessage')) {
+        // La verificación para TikTok está comentada ya que ese flujo se ha desactivado
+        /* if (eventBus.isEventEnabled('tiktokChatMessage')) {
           setPendingMessages(prev => [...prev, message]);
         } else {
           console.log('[LOG-SIDEPANEL] No añadiendo mensaje a la cola porque el evento está deshabilitado:', {
             message,
             timestamp: new Date().toISOString()
           });
-        }
+        } */
+        
+        // Siempre agregamos mensajes a la cola ahora que TikTok está desactivado
+        setPendingMessages(prev => [...prev, message]);
       }
     };
 

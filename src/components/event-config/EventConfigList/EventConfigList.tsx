@@ -1,9 +1,29 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import EventCard from './EventCard/EventCard';
 import { useEventStore } from '../../../lib/events/eventStore';
-import { ChatFilterConfig } from '../../../lib/events/types/chatConfig';
+// Comentada la importación del tipo ChatFilterConfig
+// import { ChatFilterConfig } from '../../../lib/events/types/chatConfig';
 import './EventConfigList.scss';
 import EventConfigModal from './EventCard/EventConfigModal/EventConfigModal';
+
+// Definir tipo ChatFilterConfig localmente para evitar dependencias
+interface ChatFilterConfig {
+  followerRole: {
+    noFollow: boolean;
+    follower: boolean;
+    friend: boolean;
+  };
+  userStatus: {
+    moderator: boolean;
+    subscriber: boolean;
+    newDonor: boolean;
+  };
+  donorRange: {
+    unrestricted: boolean;
+    min: number;
+    max: number;
+  };
+}
 
 const EventConfigList: React.FC = () => {
   const { eventConfigs, setEventConfig } = useEventStore();
@@ -25,11 +45,12 @@ const EventConfigList: React.FC = () => {
   const handleConfigChange = async (eventType: string, newConfig: ChatFilterConfig | Record<string, any>) => {
     try {
       setIsUpdating(true);
-      if (eventType === 'tiktokChatMessage' && 'followerRole' in newConfig) {
+      // Comentada la condición específica para TikTok
+      /* if (eventType === 'tiktokChatMessage' && 'followerRole' in newConfig) {
         await setEventConfig(eventType, { filterParameters: newConfig as ChatFilterConfig });
-      } else {
+      } else { */
         await setEventConfig(eventType, { filterParameters: newConfig });
-      }
+      // }
     } catch (error) {
       console.error('Error al actualizar configuración:', error);
     } finally {
@@ -47,9 +68,10 @@ const EventConfigList: React.FC = () => {
 
   const selectedConfig = eventConfigs.find(config => config.eventType === selectedEvent);
   const currentConfig: ChatFilterConfig = useMemo(() => {
-    if (selectedConfig?.eventType === 'tiktokChatMessage') {
+    // Comentada la condición específica para TikTok
+    /* if (selectedConfig?.eventType === 'tiktokChatMessage') {
       return selectedConfig.filterParameters as ChatFilterConfig;
-    }
+    } */
     return {
       followerRole: { noFollow: true, follower: true, friend: true },
       userStatus: { moderator: true, subscriber: true, newDonor: true },
@@ -62,7 +84,8 @@ const EventConfigList: React.FC = () => {
       <h2>Configuración de Eventos</h2>
       <div className="events-container">
         {eventConfigs.map((config) => {
-          if (config.eventType === 'tiktokChatMessage') {
+          // Comentada la condición específica para TikTok
+          /* if (config.eventType === 'tiktokChatMessage') {
             return (
               <EventCard
                 key={config.eventType}
@@ -74,7 +97,7 @@ const EventConfigList: React.FC = () => {
                 onConfigure={() => handleConfigure(config.eventType)}
               />
             );
-          }
+          } */
           return (
             <EventCard
               key={config.eventType}

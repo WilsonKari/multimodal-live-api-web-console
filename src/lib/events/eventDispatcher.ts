@@ -1,10 +1,8 @@
 import { useEventStore } from './eventStore';
-import { TiktokChatMessageEvent, SpotifySongPlayedEvent, EventType } from './eventTypes';
-import { tiktokChatMessageSchema, passesFilter as chatPassesFilter } from './conditions/tiktokChatMessage';
+import { SpotifySongPlayedEvent, EventType } from './eventTypes';
 import { spotifySongPlayedSchema } from './conditions/spotifySongPlayed';
 import { eventQueue } from './eventQueue';
 import eventBus from './eventBus';
-import { ChatFilterConfig } from './types/chatConfig';
 
 let eventSubscriptionsActive = false;
 let currentSubscriptions: string[] = [];
@@ -12,11 +10,10 @@ let currentSubscriptions: string[] = [];
 interface EventConfig {
   eventType: string;
   enabled: boolean;
-  filterParameters: ChatFilterConfig | Record<string, any>;
+  filterParameters: Record<string, any>;
 }
 
 const conditionMap = {
-  tiktokChatMessage: tiktokChatMessageSchema,
   spotifySongPlayed: spotifySongPlayedSchema,
 };
 
@@ -27,7 +24,7 @@ function isEventEnabled(eventType: string): boolean {
   const config = store.eventConfigs.find((config: EventConfig) => config.eventType === eventType);
   const enabled = config?.enabled || false;
 
-  console.log('[LOG-3] Verificación de estado en dispatcher:', {
+  console.log('[LOG] Verificación de estado en dispatcher:', {
     eventType,
     enabled,
     configFound: !!config,
@@ -37,56 +34,19 @@ function isEventEnabled(eventType: string): boolean {
   return enabled;
 }
 
-function passesFilter<T extends EventType>(
-  eventType: ConditionTypes,
-  eventData: T,
-  filterParams: ChatFilterConfig | Record<string, any>
-): boolean {
-  if (eventType === 'tiktokChatMessage') {
-    return chatPassesFilter(eventData as TiktokChatMessageEvent, filterParams as ChatFilterConfig);
-  }
-  return true;
-}
-
 function processEvent(eventData: EventType) {
   try {
-    console.log('[LOG-5] Iniciando procesamiento de evento:', {
+    console.log('[LOG] Iniciando procesamiento de evento:', {
       eventType: eventData.eventType,
       timestamp: new Date().toISOString()
     });
 
-    // No procesar eventos de Spotify aquí, ya que se manejan directamente
+    // Procesar eventos de Spotify
     if (eventData.eventType === 'spotifySongPlayed') {
-      return;
-    }
-
-    // Verificar nuevamente el estado antes de procesar
-    if (!isEventEnabled(eventData.eventType)) {
-      console.log('[LOG-6] Evento bloqueado en processEvent:', {
-        eventType: eventData.eventType,
-        timestamp: new Date().toISOString()
-      });
-      return;
-    }
-
-    if (eventData.eventType === 'tiktokChatMessage') {
-      // Verificación adicional para evitar procesamiento si el evento de TikTok está deshabilitado
-      const store = useEventStore.getState();
-      const isTiktokEnabled = store.eventConfigs.find(
-        config => config.eventType === 'tiktokChatMessage'
-      )?.enabled || false;
-
-      if (!isTiktokEnabled) {
-        console.log('[LOG-BREAK] Evento de TikTok bloqueado en processEvent porque está deshabilitado:', {
-          eventType: eventData.eventType,
-          timestamp: new Date().toISOString()
-        });
-        return;
-      }
-
-      const chatEvent = eventData as TiktokChatMessageEvent;
-      const messageForAssistant = `[${chatEvent.nickname}]: ${chatEvent.comment}`;
-      console.log('[LOG-8] Emitiendo mensaje aprobado:', {
+      const songEvent = eventData as SpotifySongPlayedEvent;
+      // Formatear la información del song para el SidePanel
+      const messageForAssistant = `[Spotify]: Ahora suena "${songEvent.trackName}" de ${songEvent.artistName}`;
+      console.log('[LOG] Emitiendo mensaje de Spotify:', {
         message: messageForAssistant,
         timestamp: new Date().toISOString()
       });
@@ -98,20 +58,14 @@ function processEvent(eventData: EventType) {
 }
 
 export function eventDispatcher(eventData: any, eventType: string) {
-  console.log('[LOG-1] Dispatcher recibió evento:', {
+  console.log('[LOG] Dispatcher recibió evento:', {
     eventType,
+    eventData,
     timestamp: new Date().toISOString()
   });
 
-  // Para Spotify, solo verificamos si está habilitado
-  if (eventType === 'spotifySongPlayed') {
-    // No necesitamos procesar nada más para Spotify
-    return;
-  }
-
-  // El resto del procesamiento solo para eventos de TikTok
   if (!isEventEnabled(eventType)) {
-    console.log('[LOG-2] Evento bloqueado en primera verificación:', {
+    console.log('[LOG] Evento bloqueado en verificación:', {
       eventType,
       timestamp: new Date().toISOString()
     });
@@ -123,22 +77,32 @@ export function eventDispatcher(eventData: any, eventType: string) {
   const eventConfig = eventConfigs.find((config: EventConfig) => config.eventType === eventType);
 
   if (!eventConfig || !eventConfig.enabled) {
+    console.log('[LOG] Evento bloqueado por falta de configuración:', {
+      eventType,
+      eventConfigFound: !!eventConfig,
+      enabled: eventConfig?.enabled,
+      timestamp: new Date().toISOString()
+    });
     return;
   }
 
-  const passes = passesFilter(
-    eventType as ConditionTypes, 
-    eventData, 
-    eventConfig.filterParameters
-  );
-
-  if (!passes) {
-    return;
-  }
+  console.log('[LOG] Evento pasa verificaciones, procesando:', {
+    eventType,
+    isAssistantSpeaking,
+    timestamp: new Date().toISOString()
+  });
 
   if (isAssistantSpeaking) {
+    console.log('[LOG] Añadiendo evento a la cola porque el asistente está hablando:', {
+      eventType,
+      timestamp: new Date().toISOString()
+    });
     eventQueue.addEvent(eventData);
   } else {
+    console.log('[LOG] Procesando evento inmediatamente:', {
+      eventType,
+      timestamp: new Date().toISOString()
+    });
     processEvent(eventData);
   }
 }

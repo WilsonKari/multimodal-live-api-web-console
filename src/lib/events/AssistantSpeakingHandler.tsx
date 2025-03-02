@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useEventStore } from './eventStore';
-import { tiktokService } from '../tiktok/tiktokService';
 import { spotifyService } from '../spotify/spotifyService';
 
 export function AssistantSpeakingHandler() {
@@ -9,22 +8,21 @@ export function AssistantSpeakingHandler() {
   useEffect(() => {
     const handleAssistantSpeakingStarted = () => {
       setIsAssistantSpeaking(true);
+      console.log('[Assistant] Asistente empezó a hablar, pausando eventos');
     };
 
     const handleAssistantSpeakingEnded = () => {
       setIsAssistantSpeaking(false);
+      console.log('[Assistant] Asistente terminó de hablar, reanudando eventos');
     };
 
-    tiktokService.subscribe('assistantSpeakingStarted', handleAssistantSpeakingStarted);
+    // Suscribirse a eventos de Spotify relacionados con el estado del asistente
     spotifyService.subscribe('assistantSpeakingStarted', handleAssistantSpeakingStarted);
-
-    tiktokService.subscribe('assistantSpeakingEnded', handleAssistantSpeakingEnded);
     spotifyService.subscribe('assistantSpeakingEnded', handleAssistantSpeakingEnded);
 
     return () => {
-      tiktokService.unsubscribe('assistantSpeakingStarted');
+      // Limpiar suscripciones al desmontar
       spotifyService.unsubscribe('assistantSpeakingStarted');
-      tiktokService.unsubscribe('assistantSpeakingEnded');
       spotifyService.unsubscribe('assistantSpeakingEnded');
     };
   }, [setIsAssistantSpeaking]);
